@@ -1,0 +1,66 @@
+# golangci-lint v2.x configuration
+# Reference: https://golangci-lint.run/usage/configuration/
+
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    # Enabled by default - explicitly listed for clarity
+    - errcheck      # Check for unchecked errors
+    - govet         # Vet examines Go source code
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Static analysis (includes gosimple, stylecheck in v2.x)
+    - unused        # Check for unused code
+
+    # Code quality linters
+    - misspell      # Check for misspelled words
+    - goconst       # Find repeated strings that could be constants
+    - gocyclo       # Check cyclomatic complexity
+    - dupl          # Check for duplicated code
+    - revive        # Comprehensive code quality checks
+
+    # Specific checks
+    - gosec         # Security checks
+
+  # Note: Code formatting (gofmt, goimports) is checked separately in CI workflow
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+
+    govet:
+      enable-all: true
+      disable:
+        - shadow         # Can be noisy in some cases
+        - fieldalignment # Field alignment is not critical for readability
+        - unusedwrite    # Test struct writes are for documentation
+
+    gocyclo:
+      min-complexity: 30  # Network protocol code has higher complexity
+
+    dupl:
+      threshold: 150  # Test patterns can be similar
+
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+
+    misspell:
+      locale: US
+
+    revive:
+      confidence: 0.8
+
+    gosec:
+      excludes:
+        - G104  # Covered by errcheck linter
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
