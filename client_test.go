@@ -909,6 +909,8 @@ func TestDisconnectMultipleTimes(t *testing.T) {
 }
 
 // TestDisconnectLogging tests that Disconnect() logs with reusable=true
+//
+//nolint:dupl // Test structure similar to TestCloseLogging but validates different behavior
 func TestDisconnectLogging(t *testing.T) {
 	mock := &mockLogger{}
 
@@ -971,6 +973,8 @@ func TestDisconnectLogging(t *testing.T) {
 }
 
 // TestCloseLogging tests that Close() logs with reusable=false
+//
+//nolint:dupl // Test structure similar to TestDisconnectLogging but validates different behavior
 func TestCloseLogging(t *testing.T) {
 	mock := &mockLogger{}
 

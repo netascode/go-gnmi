@@ -66,7 +66,7 @@ func basicDisconnectReconnect(target, username, password string) {
 	if err != nil {
 		log.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer client.Close() //nolint:errcheck // Error intentionally ignored in example
 
 	ctx := context.Background()
 
@@ -107,7 +107,7 @@ func connectionPoolingWithIdleTimeout(target, username, password string) {
 	if err != nil {
 		log.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer client.Close() //nolint:errcheck // Error intentionally ignored in example
 
 	ctx := context.Background()
 
@@ -173,7 +173,7 @@ func longRunningAppWithMaintenance(target, username, password string) {
 	if err != nil {
 		log.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer client.Close() //nolint:errcheck // Error intentionally ignored in example
 
 	ctx := context.Background()
 
@@ -252,7 +252,7 @@ func disconnectVsClose(target, username, password string) {
 	}
 
 	// Clean up
-	client1.Close()
+	client1.Close() //nolint:errcheck // Error intentionally ignored in example
 
 	// Test Close() - terminal
 	fmt.Println("\nTesting Close() - terminal:")

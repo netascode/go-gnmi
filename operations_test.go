@@ -797,7 +797,7 @@ func TestGet_PathLogging(t *testing.T) {
 				t.Logf("Expected panic recovered: %v", r)
 			}
 		}()
-		_, _ = client.Get(ctx, paths)
+		_, _ = client.Get(ctx, paths) //nolint:errcheck // Error intentionally ignored - expecting panic
 	}()
 
 	// Verify: Initial Get request log message exists
