@@ -66,9 +66,10 @@ func main() {
 		fmt.Println("Connected - check logs above for connection info")
 		defer client2.Close() //nolint:errcheck // Error intentionally ignored in example
 
-		// Perform a simple operation
+		// Perform a simple operation with multiple paths
+		// Each path will be logged separately at Debug level
 		ctx := context.Background()
-		paths := []string{"/system/config"}
+		paths := []string{"/system/config", "/interfaces/interface"}
 		_, err := client2.Get(ctx, paths)
 		if err != nil {
 			log.Printf("Get failed: %v", err)
@@ -94,6 +95,11 @@ func main() {
 		defer client3.Close() //nolint:errcheck // Error intentionally ignored in example
 
 		// Perform operations to see detailed logging
+		// At Debug level, you'll see:
+		//   - gNMI Get request (with path count and encoding)
+		//   - gNMI Get path (for each individual path with index)
+		//   - gNMI Get response (with notification count)
+		//   - gNMI Get notification (for each notification with details)
 		ctx := context.Background()
 		paths := []string{"/interfaces/interface[name=GigabitEthernet0/0/0/0]/config"}
 		_, err := client3.Get(ctx, paths)

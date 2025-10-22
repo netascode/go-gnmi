@@ -171,9 +171,10 @@ func main() {
     ops := []gnmi.SetOperation{
         gnmi.Update(
             "/interfaces/interface[name=GigabitEthernet0/0/0/0]/config",
-            value,
-            "json_ietf",  // Encoding
+            value,  // Defaults to json_ietf encoding
         ),
+        // Or with explicit encoding:
+        // gnmi.Update("/path", value, gnmi.SetEncoding("json")),
     }
 
     res, err = client.Set(ctx, ops)

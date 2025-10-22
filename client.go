@@ -183,11 +183,101 @@ func NewClient(target string, opts ...func(*Client)) (*Client, error) {
 	return client, nil
 }
 
-// Close closes the gNMI session and cleans up resources
+// Disconnect closes the gRPC connection but preserves client configuration.
 //
-// This closes the underlying gRPC connection and releases all resources.
-// The target reference is cleared before closing to prevent double-close
-// attempts if Close() is called multiple times.
+// Unlike Close(), this method allows the client to be reused - subsequent
+// operations will automatically reconnect. This is useful for:
+//   - Connection pooling with idle timeout disconnection
+//   - Long-running applications that need to release connections temporarily
+//   - Testing reconnection logic
+//
+// The client maintains its target configuration and will reconnect on the next
+// RPC call via the ensureConnected() mechanism.
+//
+// Example - Disconnect and reuse pattern:
+//
+//	client, _ := gnmi.NewClient("192.168.1.1:57400", opts...)
+//	defer client.Close()
+//
+//	// Use client
+//	_, err := client.Get(ctx, paths)
+//
+//	// Release connection temporarily
+//	client.Disconnect()
+//
+//	// Automatically reconnects on next use
+//	_, err = client.Get(ctx, paths)
+//
+// Example - Connection pooling with idle timeout:
+//
+//	// Disconnect idle connections periodically
+//	ticker := time.NewTicker(5 * time.Minute)
+//	go func() {
+//	    for range ticker.C {
+//	        client.Disconnect() // Release idle connection
+//	    }
+//	}()
+//
+// Example - Long-running application pattern:
+//
+//	// Disconnect during maintenance window
+//	client.Disconnect()
+//	performMaintenance()
+//	// Reconnects automatically when needed
+//	client.Get(ctx, paths)
+//
+// Thread-safe: safe for concurrent use with other client methods.
+func (c *Client) Disconnect() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.target == nil {
+		// Already disconnected or closed
+		return nil
+	}
+
+	// Close the underlying gRPC connection
+	// Log any errors but continue - connection may already be broken
+	if err := c.target.Close(); err != nil {
+		c.logger.Warn(context.Background(), "gNMI connection close returned error during disconnect",
+			"target", c.Target,
+			"error", err.Error())
+		// Continue anyway - we're disconnecting, target will be reusable
+	}
+
+	// Reset connected flag
+	// Target remains valid and can be reconnected via ensureConnected()
+	c.connected = false
+
+	c.logger.Info(context.Background(), "gNMI connection disconnected",
+		"target", c.Target,
+		"reusable", true)
+
+	return nil
+}
+
+// Close closes the gNMI session and cleans up resources (terminal operation).
+//
+// This method is TERMINAL - the client cannot be reused after calling Close().
+// All resources are released and the target configuration is destroyed.
+//
+// Use Disconnect() instead if you want to temporarily close the connection
+// while preserving the ability to reconnect later.
+//
+// This method is typically used in defer statements to ensure proper cleanup:
+//
+// Example:
+//
+//	client, err := gnmi.NewClient("192.168.1.1:57400", opts...)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	defer client.Close() // Ensure cleanup on function exit
+//
+//	// Use client...
+//	res, err := client.Get(ctx, paths)
+//
+// Thread-safe: safe to call multiple times (subsequent calls are no-ops).
 func (c *Client) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -208,7 +298,8 @@ func (c *Client) Close() error {
 	}
 
 	c.logger.Info(context.Background(), "gNMI connection closed",
-		"target", c.Target)
+		"target", c.Target,
+		"reusable", false)
 
 	return nil
 }

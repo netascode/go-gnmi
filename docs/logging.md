@@ -73,8 +73,11 @@ Logs all operations including request/response details:
 logger := gnmi.NewDefaultLogger(gnmi.LogLevelDebug)
 // Output:
 // DEBUG: Creating new client target=device:57400
-// DEBUG: Get request paths=[/interfaces/interface[name=Gi0]/state]
-// DEBUG: Get response OK=true notifications=1
+// DEBUG: gNMI Get request target=device:57400 paths=2 encoding=json_ietf
+// DEBUG: gNMI Get path index=0 path=/interfaces/interface[name=Gi0]/state
+// DEBUG: gNMI Get path index=1 path=/system/config/hostname
+// DEBUG: gNMI Get response target=device:57400 notifications=2
+// DEBUG: gNMI Get notification index=0 timestamp=1234567890 updates=1 deletes=0
 ```
 
 ### Info Level

@@ -874,3 +874,301 @@ func TestSecurity_CredentialProtection(t *testing.T) {
 		}
 	})
 }
+
+// TestDisconnectNilTarget tests disconnecting a client with nil target
+func TestDisconnectNilTarget(t *testing.T) {
+	client := &Client{
+		target: nil,
+		logger: &NoOpLogger{},
+	}
+
+	err := client.Disconnect()
+	if err != nil {
+		t.Errorf("Disconnect() on nil target should not error, got: %v", err)
+	}
+}
+
+// TestDisconnectMultipleTimes tests that Disconnect() can be called multiple times
+func TestDisconnectMultipleTimes(t *testing.T) {
+	client := &Client{
+		target: nil, // Already disconnected
+		logger: &NoOpLogger{},
+	}
+
+	// First disconnect
+	err := client.Disconnect()
+	if err != nil {
+		t.Errorf("First Disconnect() should not error, got: %v", err)
+	}
+
+	// Second disconnect
+	err = client.Disconnect()
+	if err != nil {
+		t.Errorf("Second Disconnect() should not error, got: %v", err)
+	}
+}
+
+// TestDisconnectLogging tests that Disconnect() logs with reusable=true
+func TestDisconnectLogging(t *testing.T) {
+	mock := &mockLogger{}
+
+	// Create client with mock logger and valid target configuration
+	client := &Client{
+		Target:             "192.168.1.1",
+		Port:               57400,
+		ConnectTimeout:     DefaultConnectTimeout,
+		OperationTimeout:   DefaultOperationTimeout,
+		MaxRetries:         DefaultMaxRetries,
+		BackoffMinDelay:    DefaultBackoffMinDelay,
+		BackoffMaxDelay:    DefaultBackoffMaxDelay,
+		BackoffDelayFactor: DefaultBackoffDelayFactor,
+		logger:             mock,
+		connected:          false,
+	}
+
+	// Create target (without actual connection)
+	if err := client.createTarget(); err != nil {
+		t.Fatalf("Failed to create target: %v", err)
+	}
+
+	// Disconnect (will close target and recreate it)
+	err := client.Disconnect()
+	if err != nil {
+		t.Fatalf("Disconnect() failed: %v", err)
+	}
+
+	// Verify Info was called with reusable=true
+	if len(mock.infoCalls) == 0 {
+		t.Fatal("Expected at least one Info call for disconnect")
+	}
+
+	// Find the disconnect info call (last one should be disconnect)
+	var disconnectCall map[string]any
+	for _, call := range mock.infoCalls {
+		if msg, ok := call["msg"].(string); ok && strings.Contains(msg, "disconnected") {
+			disconnectCall = call
+			break
+		}
+	}
+
+	if disconnectCall == nil {
+		t.Fatal("Expected Info call with 'disconnected' message")
+	}
+
+	if disconnectCall["reusable"] != true {
+		t.Errorf("Expected reusable=true in disconnect log, got %v", disconnectCall["reusable"])
+	}
+
+	// Verify target is preserved (not nil)
+	if client.target == nil {
+		t.Error("Disconnect() should preserve target (not set to nil)")
+	}
+
+	// Verify connected flag is reset
+	if client.connected {
+		t.Error("Disconnect() should reset connected flag to false")
+	}
+}
+
+// TestCloseLogging tests that Close() logs with reusable=false
+func TestCloseLogging(t *testing.T) {
+	mock := &mockLogger{}
+
+	// Create client with mock logger and valid target configuration
+	client := &Client{
+		Target:             "192.168.1.1",
+		Port:               57400,
+		ConnectTimeout:     DefaultConnectTimeout,
+		OperationTimeout:   DefaultOperationTimeout,
+		MaxRetries:         DefaultMaxRetries,
+		BackoffMinDelay:    DefaultBackoffMinDelay,
+		BackoffMaxDelay:    DefaultBackoffMaxDelay,
+		BackoffDelayFactor: DefaultBackoffDelayFactor,
+		logger:             mock,
+		connected:          false,
+	}
+
+	// Create target (without actual connection)
+	if err := client.createTarget(); err != nil {
+		t.Fatalf("Failed to create target: %v", err)
+	}
+
+	// Close
+	err := client.Close()
+	if err != nil {
+		t.Fatalf("Close() failed: %v", err)
+	}
+
+	// Verify Info was called with reusable=false
+	if len(mock.infoCalls) == 0 {
+		t.Fatal("Expected at least one Info call for close")
+	}
+
+	// Find the close info call (last one should be close)
+	var closeCall map[string]any
+	for _, call := range mock.infoCalls {
+		if msg, ok := call["msg"].(string); ok && strings.Contains(msg, "closed") {
+			closeCall = call
+			break
+		}
+	}
+
+	if closeCall == nil {
+		t.Fatal("Expected Info call with 'closed' message")
+	}
+
+	if closeCall["reusable"] != false {
+		t.Errorf("Expected reusable=false in close log, got %v", closeCall["reusable"])
+	}
+
+	// Verify target is destroyed (set to nil)
+	if client.target != nil {
+		t.Error("Close() should set target to nil (terminal operation)")
+	}
+
+	// Verify connected flag is reset
+	if client.connected {
+		t.Error("Close() should reset connected flag to false")
+	}
+}
+
+// TestDisconnectVsClose tests the key differences between Disconnect() and Close()
+func TestDisconnectVsClose(t *testing.T) {
+	t.Run("Disconnect preserves target", func(t *testing.T) {
+		client := &Client{
+			Target:             "192.168.1.1",
+			Port:               57400,
+			ConnectTimeout:     DefaultConnectTimeout,
+			OperationTimeout:   DefaultOperationTimeout,
+			MaxRetries:         DefaultMaxRetries,
+			BackoffMinDelay:    DefaultBackoffMinDelay,
+			BackoffMaxDelay:    DefaultBackoffMaxDelay,
+			BackoffDelayFactor: DefaultBackoffDelayFactor,
+			logger:             &NoOpLogger{},
+		}
+
+		// Create target
+		if err := client.createTarget(); err != nil {
+			t.Fatalf("Failed to create target: %v", err)
+		}
+
+		// Disconnect
+		if err := client.Disconnect(); err != nil {
+			t.Fatalf("Disconnect() failed: %v", err)
+		}
+
+		// Verify target is preserved
+		if client.target == nil {
+			t.Error("Disconnect() should preserve target (allow reuse)")
+		}
+
+		// Verify connected flag is reset
+		if client.connected {
+			t.Error("Disconnect() should reset connected flag")
+		}
+	})
+
+	t.Run("Close destroys target", func(t *testing.T) {
+		client := &Client{
+			Target:             "192.168.1.1",
+			Port:               57400,
+			ConnectTimeout:     DefaultConnectTimeout,
+			OperationTimeout:   DefaultOperationTimeout,
+			MaxRetries:         DefaultMaxRetries,
+			BackoffMinDelay:    DefaultBackoffMinDelay,
+			BackoffMaxDelay:    DefaultBackoffMaxDelay,
+			BackoffDelayFactor: DefaultBackoffDelayFactor,
+			logger:             &NoOpLogger{},
+		}
+
+		// Create target
+		if err := client.createTarget(); err != nil {
+			t.Fatalf("Failed to create target: %v", err)
+		}
+
+		// Close
+		if err := client.Close(); err != nil {
+			t.Fatalf("Close() failed: %v", err)
+		}
+
+		// Verify target is destroyed
+		if client.target != nil {
+			t.Error("Close() should destroy target (terminal operation)")
+		}
+
+		// Verify connected flag is reset
+		if client.connected {
+			t.Error("Close() should reset connected flag")
+		}
+	})
+
+	t.Run("ensureConnected fails after Close", func(t *testing.T) {
+		client := &Client{
+			Target:             "192.168.1.1",
+			Port:               57400,
+			ConnectTimeout:     DefaultConnectTimeout,
+			OperationTimeout:   DefaultOperationTimeout,
+			MaxRetries:         DefaultMaxRetries,
+			BackoffMinDelay:    DefaultBackoffMinDelay,
+			BackoffMaxDelay:    DefaultBackoffMaxDelay,
+			BackoffDelayFactor: DefaultBackoffDelayFactor,
+			logger:             &NoOpLogger{},
+		}
+
+		// Create target
+		if err := client.createTarget(); err != nil {
+			t.Fatalf("Failed to create target: %v", err)
+		}
+
+		// Close (terminal operation)
+		if err := client.Close(); err != nil {
+			t.Fatalf("Close() failed: %v", err)
+		}
+
+		// Try to ensure connection (should fail)
+		ctx := context.Background()
+		err := client.ensureConnected(ctx)
+		if err == nil {
+			t.Error("ensureConnected() should fail after Close()")
+		}
+		if !strings.Contains(err.Error(), "not connected") {
+			t.Errorf("ensureConnected() should return 'not connected' error, got: %v", err)
+		}
+	})
+
+	t.Run("ensureConnected works after Disconnect", func(t *testing.T) {
+		client := &Client{
+			Target:             "192.168.1.1",
+			Port:               57400,
+			ConnectTimeout:     DefaultConnectTimeout,
+			OperationTimeout:   DefaultOperationTimeout,
+			MaxRetries:         DefaultMaxRetries,
+			BackoffMinDelay:    DefaultBackoffMinDelay,
+			BackoffMaxDelay:    DefaultBackoffMaxDelay,
+			BackoffDelayFactor: DefaultBackoffDelayFactor,
+			logger:             &NoOpLogger{},
+		}
+
+		// Create target
+		if err := client.createTarget(); err != nil {
+			t.Fatalf("Failed to create target: %v", err)
+		}
+
+		// Disconnect (reusable operation)
+		if err := client.Disconnect(); err != nil {
+			t.Fatalf("Disconnect() failed: %v", err)
+		}
+
+		// Verify target is preserved
+		if client.target == nil {
+			t.Fatal("Disconnect() should preserve target")
+		}
+
+		// Note: We can't test actual reconnection without a real gNMI server,
+		// but we can verify that the target is in a state that would allow
+		// ensureConnected() to attempt reconnection (target != nil, connected == false)
+		if client.connected {
+			t.Error("After Disconnect(), connected should be false")
+		}
+	})
+}

@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	target "github.com/openconfig/gnmic/pkg/api/target"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -568,7 +570,13 @@ type TestLogger struct {
 }
 
 func (l *TestLogger) Debug(ctx context.Context, msg string, keysAndValues ...interface{}) {
-	l.logs = append(l.logs, "DEBUG: "+msg)
+	logEntry := "DEBUG: " + msg
+	for i := 0; i < len(keysAndValues); i += 2 {
+		if i+1 < len(keysAndValues) {
+			logEntry += fmt.Sprintf(" %v=%v", keysAndValues[i], keysAndValues[i+1])
+		}
+	}
+	l.logs = append(l.logs, logEntry)
 }
 
 func (l *TestLogger) Info(ctx context.Context, msg string, keysAndValues ...interface{}) {
@@ -750,6 +758,89 @@ func TestGetValidationCanceledContext(t *testing.T) {
 	}
 	if res.OK {
 		t.Error("Get() response should have OK=false for canceled context")
+	}
+}
+
+// TestGet_PathLogging tests that Get operations log each path individually at Debug level
+func TestGet_PathLogging(t *testing.T) {
+	// Create test logger to capture log messages
+	testLogger := &TestLogger{logs: []string{}}
+
+	// Create minimal target to pass nil check (Get will fail later on api call, but logging happens first)
+	mockTarget := &target.Target{}
+
+	client := &Client{
+		Target:           "test-device:57400",
+		OperationTimeout: 60 * time.Second,
+		logger:           testLogger,
+		mu:               sync.RWMutex{},
+		target:           mockTarget,
+		connected:        true, // Mark as connected to bypass ensureConnected
+	}
+
+	// Note: This test validates path logging logic, not actual gNMI communication
+	// The Get call will fail on api.NewGetRequest (no real gnmic), but logs should be generated first
+
+	ctx := context.Background()
+	paths := []string{
+		"/interfaces/interface[name=Gi0]/state",
+		"/system/config/hostname",
+		"/network-instances/network-instance[name=default]/config",
+	}
+
+	// Call Get (will fail on target.Get, but path logs should be generated first)
+	// Use defer/recover to capture panic but still check logs
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				// Expected panic on target.Get - logs should be captured already
+				t.Logf("Expected panic recovered: %v", r)
+			}
+		}()
+		_, _ = client.Get(ctx, paths)
+	}()
+
+	// Verify: Initial Get request log message exists
+	found := false
+	for _, log := range testLogger.logs {
+		if strings.Contains(log, "gNMI Get request") {
+			found = true
+			// Verify it contains path count
+			if !strings.Contains(log, "paths=3") {
+				t.Errorf("Expected 'paths=3' in log, got: %s", log)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected 'gNMI Get request' log message not found")
+	}
+
+	// Verify: Each path is logged individually
+	expectedPathLogs := []struct {
+		msg   string
+		index int
+		path  string
+	}{
+		{"gNMI Get path", 0, "/interfaces/interface[name=Gi0]/state"},
+		{"gNMI Get path", 1, "/system/config/hostname"},
+		{"gNMI Get path", 2, "/network-instances/network-instance[name=default]/config"},
+	}
+
+	for _, expected := range expectedPathLogs {
+		found := false
+		for _, log := range testLogger.logs {
+			if strings.Contains(log, expected.msg) &&
+				strings.Contains(log, fmt.Sprintf("index=%d", expected.index)) &&
+				strings.Contains(log, fmt.Sprintf("path=%s", expected.path)) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected log message for path %q at index %d not found", expected.path, expected.index)
+			t.Logf("Captured logs: %v", testLogger.logs)
+		}
 	}
 }
 

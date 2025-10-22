@@ -421,6 +421,13 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 		"paths", len(paths),
 		"encoding", req.Encoding)
 
+	// Log each path (at Debug level)
+	for i, path := range paths {
+		c.logger.Debug(ctx, "gNMI Get path",
+			"index", i,
+			"path", path)
+	}
+
 	// Execute request with retry logic
 	var getResp *gnmipb.GetResponse
 	var lastErr error
