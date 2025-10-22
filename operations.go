@@ -6,6 +6,7 @@ package gnmi
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	gnmipb "github.com/openconfig/gnmi/proto/gnmi"
@@ -47,8 +48,13 @@ func validatePaths(paths []string) error {
 			return fmt.Errorf("path at index %d exceeds maximum length of %d characters: %s", i, MaxPathLength, truncatePath(path))
 		}
 
-		if path[0] != '/' {
-			return fmt.Errorf("path at index %d must start with '/': %s", i, path)
+		// gNMI paths can be in two formats:
+		// 1. Absolute: /interfaces/interface[name=eth0]
+		// 2. Module-qualified: openconfig-interfaces:/interfaces/interface[name=eth0]
+		//    or: Cisco-IOS-XR-um-banner-cfg:/banners/banner[banner-type=login]
+		// Check if path is valid (starts with / or is module-qualified)
+		if !isValidGNMIPath(path) {
+			return fmt.Errorf("path at index %d must start with '/' or be module-qualified (module:path): %s", i, path)
 		}
 
 		// Check for malicious patterns
@@ -1012,4 +1018,33 @@ func (c *Client) extractErrorDetails(err error) []ErrorModel {
 		Message: err.Error(),
 		Details: "",
 	}}
+}
+
+// isValidGNMIPath checks if a path is in valid gNMI format
+//
+// Valid formats:
+//  1. Absolute path: /interfaces/interface[name=eth0]
+//  2. Module-qualified path: module-name:/path (e.g., openconfig-interfaces:/interfaces)
+//
+// Returns true if the path is valid, false otherwise.
+func isValidGNMIPath(path string) bool {
+	if len(path) == 0 {
+		return false
+	}
+
+	// Check for absolute path (starts with /)
+	if path[0] == '/' {
+		return true
+	}
+
+	// Check for module-qualified path (module:path format)
+	// Must contain : and the part after : must start with /
+	colonIdx := strings.IndexByte(path, ':')
+	if colonIdx > 0 && colonIdx < len(path)-1 {
+		// Has module prefix, check if path part starts with /
+		pathPart := path[colonIdx+1:]
+		return len(pathPart) > 0 && pathPart[0] == '/'
+	}
+
+	return false
 }
