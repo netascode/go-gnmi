@@ -73,7 +73,30 @@ All Go source files must include SPDX license identifier and copyright notice:
 package gnmi
 ```
 
-Use provided scripts: `bash scripts/add-headers.sh` or `bash scripts/check-headers.sh`
+#### Adding Headers
+
+The project uses [Google's addlicense](https://github.com/google/addlicense) tool for license header management.
+
+**Install addlicense:**
+```bash
+go install github.com/google/addlicense@latest
+# Or use: make tools
+```
+
+**Add headers to new files:**
+```bash
+make license
+```
+
+**Verify headers:**
+```bash
+make check-license
+```
+
+**Important Notes:**
+- The check command accepts ANY copyright holder name (for open source contributions)
+- Contributors from different organizations can keep their own copyright lines
+- Both SPDX-first and Copyright-first formats are accepted
 
 ### Testing
 
