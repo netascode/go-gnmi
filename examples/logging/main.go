@@ -175,7 +175,7 @@ func main() {
 		// but the logging demonstrates redaction
 		ctx := context.Background()
 		ops := []gnmi.SetOperation{
-			gnmi.Update("/system/config", value, "json_ietf"),
+			gnmi.Update("/system/config", value),
 		}
 		_, err = client5.Set(ctx, ops)
 		if err != nil {

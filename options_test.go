@@ -479,11 +479,11 @@ func TestEncodingRequestModifier(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := &Req{}
-			mod := Encoding(tt.encoding)
+			mod := GetEncoding(tt.encoding)
 			mod(req)
 
 			if req.Encoding != tt.encoding {
-				t.Errorf("Encoding() set Encoding to %q, want %q", req.Encoding, tt.encoding)
+				t.Errorf("GetEncoding() set Encoding to %q, want %q", req.Encoding, tt.encoding)
 			}
 		})
 	}

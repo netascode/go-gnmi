@@ -29,7 +29,7 @@ import (
 //	}
 //
 //	ops := []gnmi.SetOperation{
-//	    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]/config", value, "json_ietf"),
+//	    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]/config", value),
 //	}
 type Body struct {
 	// str contains the JSON string being built

@@ -74,7 +74,7 @@ func TestConcurrentSetOperations(t *testing.T) {
 
 			ctx := context.Background()
 			ops := []SetOperation{
-				Update("/test/path", `{"value": "test"}`, "json_ietf"),
+				Update("/test/path", `{"value": "test"}`),
 			}
 			// This will fail (no connection), but should not cause race conditions
 			_, _ = client.Set(ctx, ops) //nolint:errcheck // Error intentionally ignored in test
@@ -249,7 +249,7 @@ func TestConcurrentMixedOperations(t *testing.T) {
 				defer wg.Done()
 				ctx := context.Background()
 				ops := []SetOperation{
-					Update("/test/path", `{"value": "test"}`, "json_ietf"),
+					Update("/test/path", `{"value": "test"}`),
 				}
 				_, _ = client.Set(ctx, ops) //nolint:errcheck // Error intentionally ignored in test
 			}(i)

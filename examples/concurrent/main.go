@@ -191,7 +191,7 @@ func serializedSets(ctx context.Context, client *gnmi.Client) {
 
 			opStart := time.Now()
 			ops := []gnmi.SetOperation{
-				gnmi.Update(operation.path, operation.value, "json_ietf"),
+				gnmi.Update(operation.path, operation.value),
 			}
 
 			_, err := client.Set(ctx, ops)
@@ -238,7 +238,7 @@ func mixedOperations(ctx context.Context, client *gnmi.Client) {
 
 		fmt.Println("Launching Set operation (will serialize)...")
 		ops := []gnmi.SetOperation{
-			gnmi.Update("/system/config/hostname", `"ConcurrentTest"`, "json_ietf"),
+			gnmi.Update("/system/config/hostname", `"ConcurrentTest"`),
 		}
 
 		_, err := client.Set(ctx, ops)

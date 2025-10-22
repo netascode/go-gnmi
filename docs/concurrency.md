@@ -138,7 +138,7 @@ res, err := client.Set(ctx, ops)
 for i := 0; i < 10; i++ {
     body := gnmi.Body{}.Set("description", fmt.Sprintf("IF %d", i))
     value, _ := body.String()  // Error ignored for brevity
-    ops := []gnmi.SetOperation{gnmi.Update(path, value, "json_ietf")}
+    ops := []gnmi.SetOperation{gnmi.Update(path, value)}
     client.Set(ctx, ops)  // Each blocks the next
 }
 ```

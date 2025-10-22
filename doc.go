@@ -50,7 +50,7 @@
 //	}
 //
 //	ops := []gnmi.SetOperation{
-//	    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]/config", value, "json_ietf"),
+//	    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]/config", value),
 //	}
 //	res, err = client.Set(ctx, ops)
 //

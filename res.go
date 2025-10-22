@@ -122,7 +122,7 @@ type SetRes struct {
 // Example:
 //
 //	ops := []gnmi.SetOperation{
-//	    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]/config/mtu", `{"mtu": 9000}`, "json_ietf"),
+//	    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]/config/mtu", `{"mtu": 9000}`),
 //	}
 //	res, err := client.Set(ctx, ops)
 //	if err != nil {
@@ -144,7 +144,7 @@ func (r SetRes) GetValue(path string) gjson.Result {
 // Example:
 //
 //	ops := []gnmi.SetOperation{
-//	    gnmi.Update("/system/config/hostname", `{"hostname": "router1"}`, "json_ietf"),
+//	    gnmi.Update("/system/config/hostname", `{"hostname": "router1"}`),
 //	}
 //	res, err := client.Set(ctx, ops)
 //	if err != nil {

@@ -131,7 +131,7 @@ func setUpdate(ctx context.Context, client *gnmi.Client) {
 	value := `"WAN Interface - Updated"`
 
 	ops := []gnmi.SetOperation{
-		gnmi.Update(path, value, "json_ietf"),
+		gnmi.Update(path, value),
 	}
 
 	res, err := client.Set(ctx, ops)
@@ -153,7 +153,7 @@ func setReplace(ctx context.Context, client *gnmi.Client) {
 	value := "9000"
 
 	ops := []gnmi.SetOperation{
-		gnmi.Replace(path, value, "json_ietf"),
+		gnmi.Replace(path, value),
 	}
 
 	res, err := client.Set(ctx, ops)
@@ -208,7 +208,7 @@ func setWithBodyBuilder(ctx context.Context, client *gnmi.Client) {
 	path := "/interfaces/interface[name=GigabitEthernet0/0/0/0]"
 
 	ops := []gnmi.SetOperation{
-		gnmi.Update(path, value, "json_ietf"),
+		gnmi.Update(path, value),
 	}
 
 	res, err := client.Set(ctx, ops)

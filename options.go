@@ -227,7 +227,7 @@ func Timeout(duration time.Duration) func(*Req) {
 	}
 }
 
-// Encoding returns a request modifier that sets the encoding for the operation.
+// GetEncoding returns a request modifier that sets the encoding for Get operations.
 //
 // Valid encodings: json, json_ietf (default), proto, ascii, bytes
 //
@@ -248,18 +248,59 @@ func Timeout(duration time.Duration) func(*Req) {
 //
 //	// Get with Protocol Buffer encoding
 //	res, err := client.Get(ctx, []string{"/system/config"},
-//	    gnmi.Encoding("proto"))
+//	    gnmi.GetEncoding("proto"))
 //
 //	// Get with standard JSON
 //	res, err := client.Get(ctx, []string{"/interfaces"},
-//	    gnmi.Encoding("json"))
+//	    gnmi.GetEncoding("json"))
 //
 //	// Combined with timeout
 //	res, err := client.Get(ctx, []string{"/interfaces"},
 //	    gnmi.Timeout(30*time.Second),
-//	    gnmi.Encoding("json_ietf"))
-func Encoding(encoding string) func(*Req) {
+//	    gnmi.GetEncoding("json_ietf"))
+func GetEncoding(encoding string) func(*Req) {
 	return func(req *Req) {
 		req.Encoding = encoding
+	}
+}
+
+// SetEncoding returns a modifier that sets the encoding for individual Set operations.
+//
+// Valid encodings: json, json_ietf (default), proto, ascii, bytes
+//
+// This modifier is used with Update() and Replace() operations to specify
+// the encoding for individual operations within a Set request. Each operation
+// can have a different encoding.
+//
+// Common encodings:
+//   - json_ietf: JSON with IETF conventions (recommended, default)
+//   - json: Standard JSON encoding
+//   - proto: Protocol Buffer encoding (binary)
+//   - ascii: ASCII text encoding
+//   - bytes: Raw byte encoding
+//
+// Example:
+//
+//	// Set with Protocol Buffer encoding
+//	ops := []gnmi.SetOperation{
+//	    gnmi.Update("/interfaces/interface[name=Gi0]/config", protoBytes,
+//	        gnmi.SetEncoding("proto")),
+//	}
+//
+//	// Set with standard JSON (non-IETF)
+//	ops := []gnmi.SetOperation{
+//	    gnmi.Replace("/system/config", jsonData,
+//	        gnmi.SetEncoding("json")),
+//	}
+//
+//	// Default encoding (json_ietf) - no encoding parameter needed
+//	ops := []gnmi.SetOperation{
+//	    gnmi.Update("/system/hostname", `{"hostname": "router1"}`),
+//	}
+func SetEncoding(encoding string) func(*SetOperation) {
+	return func(op *SetOperation) {
+		if encoding != "" {
+			op.Encoding = encoding
+		}
 	}
 }

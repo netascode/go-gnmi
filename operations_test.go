@@ -54,7 +54,12 @@ func TestUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Update(tt.path, tt.value, tt.encoding)
+			var got SetOperation
+			if tt.encoding != "" && tt.encoding != EncodingJSONIETF {
+				got = Update(tt.path, tt.value, SetEncoding(tt.encoding))
+			} else {
+				got = Update(tt.path, tt.value)
+			}
 			if got.OperationType != tt.want.OperationType {
 				t.Errorf("Update() OperationType = %v, want %v", got.OperationType, tt.want.OperationType)
 			}
@@ -110,7 +115,12 @@ func TestReplace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Replace(tt.path, tt.value, tt.encoding)
+			var got SetOperation
+			if tt.encoding != "" && tt.encoding != EncodingJSONIETF {
+				got = Replace(tt.path, tt.value, SetEncoding(tt.encoding))
+			} else {
+				got = Replace(tt.path, tt.value)
+			}
 			if got.OperationType != tt.want.OperationType {
 				t.Errorf("Replace() OperationType = %v, want %v", got.OperationType, tt.want.OperationType)
 			}
@@ -256,7 +266,7 @@ func TestGetEncodingValidation(t *testing.T) {
 			ctx := context.Background()
 			paths := []string{"/interfaces"}
 
-			res, err := client.Get(ctx, paths, Encoding(tt.encoding))
+			res, err := client.Get(ctx, paths, GetEncoding(tt.encoding))
 
 			if tt.wantErr != "" {
 				if err == nil {
@@ -372,7 +382,7 @@ func TestSetNotConnected(t *testing.T) {
 
 	ctx := context.Background()
 	ops := []SetOperation{
-		Update("/test", `{"value": "test"}`, "json_ietf"),
+		Update("/test", `{"value": "test"}`),
 	}
 
 	res, err := client.Set(ctx, ops)
@@ -625,12 +635,12 @@ func TestExtractErrorDetails(t *testing.T) {
 
 // TestSetOperationTypes tests that helper functions create correct operation types
 func TestSetOperationTypes(t *testing.T) {
-	update := Update("/test", `{"value": "test"}`, "json_ietf")
+	update := Update("/test", `{"value": "test"}`)
 	if update.OperationType != OperationUpdate {
 		t.Errorf("Update() OperationType = %v, want %v", update.OperationType, OperationUpdate)
 	}
 
-	replace := Replace("/test", `{"value": "test"}`, "json_ietf")
+	replace := Replace("/test", `{"value": "test"}`)
 	if replace.OperationType != OperationReplace {
 		t.Errorf("Replace() OperationType = %v, want %v", replace.OperationType, OperationReplace)
 	}
@@ -644,19 +654,19 @@ func TestSetOperationTypes(t *testing.T) {
 // TestSetOperationEncoding tests encoding defaults in helper functions
 func TestSetOperationEncoding(t *testing.T) {
 	// Test explicit encoding
-	op1 := Update("/test", `{"value": "test"}`, "json")
+	op1 := Update("/test", `{"value": "test"}`, SetEncoding("json"))
 	if op1.Encoding != "json" {
 		t.Errorf("Update() Encoding = %v, want 'json'", op1.Encoding)
 	}
 
-	// Test default encoding (empty string)
-	op2 := Update("/test", `{"value": "test"}`, "")
+	// Test default encoding
+	op2 := Update("/test", `{"value": "test"}`)
 	if op2.Encoding != EncodingJSONIETF {
 		t.Errorf("Update() Encoding = %v, want %v", op2.Encoding, EncodingJSONIETF)
 	}
 
 	// Test Replace default encoding
-	op3 := Replace("/test", `{"value": "test"}`, "")
+	op3 := Replace("/test", `{"value": "test"}`)
 	if op3.Encoding != EncodingJSONIETF {
 		t.Errorf("Replace() Encoding = %v, want %v", op3.Encoding, EncodingJSONIETF)
 	}
@@ -967,7 +977,7 @@ func TestTotalTimeoutBudgetSet(t *testing.T) {
 	start := time.Now()
 
 	ops := []SetOperation{
-		Update("/test/path", `{"value": "test"}`, "json_ietf"),
+		Update("/test/path", `{"value": "test"}`),
 	}
 	_, err := client.Set(ctx, ops)
 
@@ -1066,7 +1076,7 @@ func TestSet_NoGoroutineLeak(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		ctx := context.Background()
 		ops := []SetOperation{
-			Update("/test/path", `{"value": "test"}`, "json_ietf"),
+			Update("/test/path", `{"value": "test"}`),
 		}
 		_, _ = client.Set(ctx, ops) //nolint:errcheck // Error intentionally ignored in test
 	}
@@ -1918,8 +1928,8 @@ func TestInputValidation_SetOperations(t *testing.T) {
 		{
 			name: "valid operations",
 			ops: []SetOperation{
-				Update("/config/hostname", `{"hostname": "router1"}`, EncodingJSONIETF),
-				Replace("/config/domain", `{"domain": "example.com"}`, EncodingJSON),
+				Update("/config/hostname", `{"hostname": "router1"}`), // defaults to json_ietf
+				Replace("/config/domain", `{"domain": "example.com"}`, SetEncoding(EncodingJSON)),
 				Delete("/config/old-setting"),
 			},
 			expectError: false,
@@ -1956,7 +1966,7 @@ func TestInputValidation_SetOperations(t *testing.T) {
 		{
 			name: "invalid path in operation",
 			ops: []SetOperation{
-				Update("invalid/path", `{}`, EncodingJSON),
+				Update("invalid/path", `{}`, SetEncoding(EncodingJSON)),
 			},
 			expectError: true,
 			errorMsg:    "must start with '/'",
@@ -1977,7 +1987,7 @@ func TestInputValidation_SetOperations(t *testing.T) {
 		{
 			name: "invalid value in update",
 			ops: []SetOperation{
-				Update("/config", strings.Repeat("a", MaxValueSize+1), EncodingJSON),
+				Update("/config", strings.Repeat("a", MaxValueSize+1), SetEncoding(EncodingJSON)),
 			},
 			expectError: true,
 			errorMsg:    "exceeds maximum",

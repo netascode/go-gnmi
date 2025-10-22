@@ -108,7 +108,7 @@ if err != nil {
 }
 
 // Get with encoding
-res, err := client.Get(ctx, paths, gnmi.Encoding("json_ietf"))
+res, err := client.Get(ctx, paths, gnmi.GetEncoding("json_ietf"))
 ```
 
 ### Set Operations
@@ -129,7 +129,7 @@ if err != nil {
 
 // Create set operations
 ops := []gnmi.SetOperation{
-    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]/config", value, "json_ietf"),
+    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]/config", value),
     gnmi.Delete("/interfaces/interface[name=Gi0/0/0/1]/config"),
 }
 
@@ -174,7 +174,7 @@ if err != nil {
 // Check if server supports specific encoding
 if client.HasCapability("json_ietf") {
     // Use json_ietf encoding
-    res, err := client.Get(ctx, paths, gnmi.Encoding("json_ietf"))
+    res, err := client.Get(ctx, paths, gnmi.GetEncoding("json_ietf"))
 }
 
 // Get all server capabilities
@@ -202,7 +202,7 @@ if err != nil {
 }
 
 ops := []gnmi.SetOperation{
-    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]", value, "json_ietf"),
+    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]", value),
 }
 ```
 

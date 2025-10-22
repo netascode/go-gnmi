@@ -216,7 +216,7 @@ if err != nil {
 
 // Use in Set operation
 ops := []gnmi.SetOperation{
-    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]", value, "json_ietf"),
+    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]", value),
 }
 ```
 
@@ -226,13 +226,13 @@ gNMI supports multiple data encodings. The most common are:
 
 ```go
 // JSON IETF (default, recommended)
-res, err := client.Get(ctx, paths, gnmi.Encoding("json_ietf"))
+res, err := client.Get(ctx, paths, gnmi.GetEncoding("json_ietf"))
 
 // Standard JSON
-res, err := client.Get(ctx, paths, gnmi.Encoding("json"))
+res, err := client.Get(ctx, paths, gnmi.GetEncoding("json"))
 
 // Protocol Buffer (binary)
-res, err := client.Get(ctx, paths, gnmi.Encoding("proto"))
+res, err := client.Get(ctx, paths, gnmi.GetEncoding("proto"))
 ```
 
 The library defaults to `json_ietf` which follows IETF JSON encoding conventions for YANG models.

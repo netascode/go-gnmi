@@ -59,13 +59,13 @@ Specify the data encoding format:
 
 ```go
 // JSON IETF (default, recommended)
-res, err := client.Get(ctx, paths, gnmi.Encoding("json_ietf"))
+res, err := client.Get(ctx, paths, gnmi.GetEncoding("json_ietf"))
 
 // Standard JSON
-res, err := client.Get(ctx, paths, gnmi.Encoding("json"))
+res, err := client.Get(ctx, paths, gnmi.GetEncoding("json"))
 
 // Protocol Buffer
-res, err := client.Get(ctx, paths, gnmi.Encoding("proto"))
+res, err := client.Get(ctx, paths, gnmi.GetEncoding("proto"))
 ```
 
 ### Get with Timeout
@@ -79,7 +79,7 @@ res, err := client.Get(ctx, paths, gnmi.Timeout(30*time.Second))
 // Combined with encoding
 res, err := client.Get(ctx, paths,
     gnmi.Timeout(30*time.Second),
-    gnmi.Encoding("json_ietf"),
+    gnmi.GetEncoding("json_ietf"),
 )
 ```
 
@@ -234,12 +234,12 @@ Use helper methods to check if specific capabilities are supported:
 ```go
 // Check if json_ietf encoding is supported
 if client.HasCapability("json_ietf") {
-    res, err := client.Get(ctx, paths, gnmi.Encoding("json_ietf"))
+    res, err := client.Get(ctx, paths, gnmi.GetEncoding("json_ietf"))
 }
 
 // Check if proto encoding is supported
 if client.HasCapability("proto") {
-    res, err := client.Get(ctx, paths, gnmi.Encoding("proto"))
+    res, err := client.Get(ctx, paths, gnmi.GetEncoding("proto"))
 }
 ```
 
@@ -268,10 +268,10 @@ Specify encoding for Get operations:
 
 ```go
 // Use json_ietf encoding
-res, err := client.Get(ctx, paths, gnmi.Encoding("json_ietf"))
+res, err := client.Get(ctx, paths, gnmi.GetEncoding("json_ietf"))
 
 // Use proto encoding for better performance
-res, err := client.Get(ctx, paths, gnmi.Encoding("proto"))
+res, err := client.Get(ctx, paths, gnmi.GetEncoding("proto"))
 ```
 
 ### Combining Modifiers
@@ -281,7 +281,7 @@ Multiple modifiers can be combined:
 ```go
 res, err := client.Get(ctx, paths,
     gnmi.Timeout(30*time.Second),
-    gnmi.Encoding("json_ietf"),
+    gnmi.GetEncoding("json_ietf"),
 )
 ```
 
@@ -305,10 +305,10 @@ Use `json_ietf` for YANG-modeled data (recommended):
 
 ```go
 // ✅ GOOD - json_ietf for YANG models
-res, err := client.Get(ctx, paths, gnmi.Encoding("json_ietf"))
+res, err := client.Get(ctx, paths, gnmi.GetEncoding("json_ietf"))
 
 // Use proto for performance-critical operations
-res, err := client.Get(ctx, paths, gnmi.Encoding("proto"))
+res, err := client.Get(ctx, paths, gnmi.GetEncoding("proto"))
 ```
 
 ### Atomic Set Operations
@@ -318,14 +318,14 @@ Group related configuration changes in a single Set request:
 ```go
 // ✅ GOOD - Atomic
 ops := []gnmi.SetOperation{
-    gnmi.Update("/interfaces/interface[name=Gi0]/config", value1, "json_ietf"),
-    gnmi.Update("/interfaces/interface[name=Gi1]/config", value2, "json_ietf"),
+    gnmi.Update("/interfaces/interface[name=Gi0]/config", value1),
+    gnmi.Update("/interfaces/interface[name=Gi1]/config", value2),
 }
 res, err := client.Set(ctx, ops)
 
 // ❌ BAD - Non-atomic, inconsistent state if second fails
-client.Set(ctx, []gnmi.SetOperation{gnmi.Update("/interfaces/interface[name=Gi0]/config", value1, "json_ietf")})
-client.Set(ctx, []gnmi.SetOperation{gnmi.Update("/interfaces/interface[name=Gi1]/config", value2, "json_ietf")})
+client.Set(ctx, []gnmi.SetOperation{gnmi.Update("/interfaces/interface[name=Gi0]/config", value1)})
+client.Set(ctx, []gnmi.SetOperation{gnmi.Update("/interfaces/interface[name=Gi1]/config", value2)})
 ```
 
 ### Error Checking
@@ -407,7 +407,7 @@ Use `proto` encoding for large datasets:
 
 ```go
 // For large responses, proto is more efficient
-res, err := client.Get(ctx, paths, gnmi.Encoding("proto"))
+res, err := client.Get(ctx, paths, gnmi.GetEncoding("proto"))
 ```
 
 ### Timeout Tuning

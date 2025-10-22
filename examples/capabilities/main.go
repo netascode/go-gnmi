@@ -159,7 +159,7 @@ func adaptiveBehavior(ctx context.Context, client *gnmi.Client) {
 	fmt.Printf("\nPerforming Get operation with %s encoding...\n", encoding)
 	paths := []string{"/system/config/hostname"}
 
-	res, err := client.Get(ctx, paths, gnmi.Encoding(encoding))
+	res, err := client.Get(ctx, paths, gnmi.GetEncoding(encoding))
 	if err != nil {
 		fmt.Printf("Get with %s encoding failed: %v\n", encoding, err)
 		return

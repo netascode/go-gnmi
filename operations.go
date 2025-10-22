@@ -568,9 +568,9 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 //	ctx := context.Background()
 //	ops := []gnmi.SetOperation{
 //	    gnmi.Update("/interfaces/interface[name=Gi0/0/0/0]/config/description",
-//	        `{"description": "WAN Interface"}`, "json_ietf"),
+//	        `{"description": "WAN Interface"}`),
 //	    gnmi.Replace("/interfaces/interface[name=Gi0/0/0/0]/config/enabled",
-//	        `{"enabled": true}`, "json_ietf"),
+//	        `{"enabled": true}`),
 //	    gnmi.Delete("/interfaces/interface[name=Gi0/0/0/1]/config"),
 //	}
 //	res, err := client.Set(ctx, ops)
@@ -811,29 +811,36 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 // Update operations modify existing configuration, creating it if it doesn't exist.
 // This is the most common Set operation type.
 //
-// The encoding parameter must be one of: json, json_ietf, proto, ascii, bytes, or
-// empty string (defaults to json_ietf). Invalid encodings will be caught during
-// Set operation execution.
+// The encoding defaults to json_ietf. Use the SetEncoding() modifier to specify
+// a different encoding (json, proto, ascii, bytes).
 //
 // Parameters:
 //   - path: gNMI path string (e.g., "/interfaces/interface[name=Gi0/0/0/0]/config")
 //   - value: JSON-encoded value string
-//   - encoding: encoding type (json, json_ietf, proto, ascii, bytes, or empty for default)
+//   - opts: optional modifiers (SetEncoding, etc.)
 //
 // Example:
 //
-//	op := gnmi.Update("/system/config/hostname", `{"hostname": "router1"}`, "json_ietf")
-//	op := gnmi.Update("/system/config/domain-name", `{"domain-name": "example.com"}`, "")
-func Update(path, value string, encoding string) SetOperation {
-	if encoding == "" {
-		encoding = EncodingJSONIETF
-	}
-	return SetOperation{
+//	// Default encoding (json_ietf)
+//	op := gnmi.Update("/system/config/hostname", `{"hostname": "router1"}`)
+//
+//	// Explicit encoding
+//	op := gnmi.Update("/interfaces/interface[name=Gi0]/config", protoBytes,
+//	    gnmi.SetEncoding("proto"))
+func Update(path, value string, opts ...func(*SetOperation)) SetOperation {
+	op := SetOperation{
 		OperationType: OperationUpdate,
 		Path:          path,
 		Value:         value,
-		Encoding:      encoding,
+		Encoding:      EncodingJSONIETF, // default
 	}
+
+	// Apply functional options
+	for _, opt := range opts {
+		opt(&op)
+	}
+
+	return op
 }
 
 // Replace creates a SetOperation for replacing a path with a value
@@ -841,30 +848,37 @@ func Update(path, value string, encoding string) SetOperation {
 // Replace operations remove existing configuration at the path before applying
 // the new value. Use Replace when you need to ensure no old config remains.
 //
-// The encoding parameter must be one of: json, json_ietf, proto, ascii, bytes, or
-// empty string (defaults to json_ietf). Invalid encodings will be caught during
-// Set operation execution.
+// The encoding defaults to json_ietf. Use the SetEncoding() modifier to specify
+// a different encoding (json, proto, ascii, bytes).
 //
 // Parameters:
 //   - path: gNMI path string
 //   - value: JSON-encoded value string
-//   - encoding: encoding type (json, json_ietf, proto, ascii, bytes, or empty for default)
+//   - opts: optional modifiers (SetEncoding, etc.)
 //
 // Example:
 //
+//	// Default encoding (json_ietf)
 //	op := gnmi.Replace("/interfaces/interface[name=Gi0/0/0/0]/config",
-//	    `{"mtu": 9000}`, "json_ietf")
-//	op := gnmi.Replace("/system/config/hostname", `{"hostname": "router2"}`, "")
-func Replace(path, value string, encoding string) SetOperation {
-	if encoding == "" {
-		encoding = EncodingJSONIETF
-	}
-	return SetOperation{
+//	    `{"mtu": 9000}`)
+//
+//	// Explicit encoding
+//	op := gnmi.Replace("/system/config", jsonData,
+//	    gnmi.SetEncoding("json"))
+func Replace(path, value string, opts ...func(*SetOperation)) SetOperation {
+	op := SetOperation{
 		OperationType: OperationReplace,
 		Path:          path,
 		Value:         value,
-		Encoding:      encoding,
+		Encoding:      EncodingJSONIETF, // default
 	}
+
+	// Apply functional options
+	for _, opt := range opts {
+		opt(&op)
+	}
+
+	return op
 }
 
 // Delete creates a SetOperation for deleting a path

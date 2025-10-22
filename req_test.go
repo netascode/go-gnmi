@@ -44,7 +44,7 @@ func TestTimeout(t *testing.T) {
 	}
 }
 
-func TestEncoding(t *testing.T) {
+func TestGetEncoding(t *testing.T) {
 	tests := []struct {
 		name     string
 		encoding string
@@ -80,11 +80,11 @@ func TestEncoding(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := &Req{}
-			modifier := Encoding(tt.encoding)
+			modifier := GetEncoding(tt.encoding)
 			modifier(req)
 
 			if req.Encoding != tt.want {
-				t.Errorf("Encoding() encoding = %v, want %v", req.Encoding, tt.want)
+				t.Errorf("GetEncoding() encoding = %v, want %v", req.Encoding, tt.want)
 			}
 		})
 	}
@@ -99,7 +99,7 @@ func TestMultipleModifiers(t *testing.T) {
 	timeoutMod(req)
 
 	// Apply encoding modifier
-	encodingMod := Encoding("proto")
+	encodingMod := GetEncoding("proto")
 	encodingMod(req)
 
 	// Verify both modifiers were applied
@@ -128,10 +128,10 @@ func TestModifierOverwrite(t *testing.T) {
 	}
 
 	// Same test for encoding
-	encodingMod1 := Encoding("json")
+	encodingMod1 := GetEncoding("json")
 	encodingMod1(req)
 
-	encodingMod2 := Encoding("proto")
+	encodingMod2 := GetEncoding("proto")
 	encodingMod2(req)
 
 	if req.Encoding != "proto" {
