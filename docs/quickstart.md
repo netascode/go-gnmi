@@ -33,7 +33,7 @@ import (
 )
 
 func main() {
-    // Create a gNMI client
+    // Create a gNMI client (lazy connection - doesn't connect yet)
     client, err := gnmi.NewClient(
         "192.168.1.1:57400",  // Device hostname:port
         gnmi.Username("admin"),
@@ -42,13 +42,18 @@ func main() {
         gnmi.VerifyCertificate(false),  // For testing only
     )
     if err != nil {
-        log.Fatalf("Failed to connect: %v", err)
+        log.Fatalf("Client creation failed: %v", err)  // Configuration error
     }
     defer client.Close()
 
     ctx := context.Background()
 
-    // Get server capabilities
+    // Optional: Verify connection explicitly before proceeding
+    // if err := client.Ping(ctx); err != nil {
+    //     log.Fatalf("Connection failed: %v", err)
+    // }
+
+    // Get server capabilities (connection established automatically on first use)
     capRes, err := client.Capabilities(ctx)
     if err != nil {
         log.Fatalf("Capabilities failed: %v", err)
@@ -259,6 +264,51 @@ if err != nil {
 ```
 
 Transient errors (network issues, service unavailable) are automatically retried with exponential backoff.
+
+## Connection Behavior
+
+### Lazy Connection
+
+The client uses **lazy connection** pattern - `NewClient()` does NOT establish a physical connection immediately:
+
+```go
+// NewClient returns immediately (validates config only, no connection)
+client, err := gnmi.NewClient(target, opts...)
+if err != nil {
+    log.Fatal(err)  // Configuration error, not connection error
+}
+defer client.Close()
+
+// Connection happens automatically on first RPC call
+res, err := client.Get(ctx, paths)  // Connects here if needed
+```
+
+### Explicit Connection Verification
+
+Use `Ping()` to verify connectivity before performing operations:
+
+```go
+client, err := gnmi.NewClient(target, opts...)
+if err != nil {
+    log.Fatal(err)  // Configuration error
+}
+defer client.Close()
+
+// Verify connection works before proceeding
+if err := client.Ping(ctx); err != nil {
+    log.Fatal(err)  // Connection error - device unreachable
+}
+
+// Now confident the connection works
+res, err := client.Get(ctx, paths)
+```
+
+When to use `Ping()`:
+- **Testing/debugging** - Verify device is reachable
+- **Critical operations** - Ensure connectivity before important work
+- **Health checks** - Verify connection in monitoring systems
+
+For most use cases, `Ping()` is optional - operations will fail gracefully if connection can't be established.
 
 ## Next Steps
 

@@ -7,6 +7,14 @@
 // The library provides a high-level client interface that handles connection management,
 // JSON manipulation, error handling with automatic retry logic, and thread-safe operations.
 //
+// # Connection Behavior
+//
+// The client uses lazy connection pattern - NewClient() validates configuration but does
+// not establish a physical connection. The connection is established automatically on the
+// first RPC call.
+//
+// Use Ping() to explicitly verify connectivity before operations if needed.
+//
 // # Quick Start
 //
 // Create a client and perform basic operations:
@@ -18,11 +26,16 @@
 //	    gnmi.TLS(true),
 //	)
 //	if err != nil {
-//	    log.Fatal(err)
+//	    log.Fatal(err)  // Configuration error
 //	}
 //	defer client.Close()
 //
-//	// Get operation with paths
+//	// Optional: verify connection explicitly
+//	if err := client.Ping(ctx); err != nil {
+//	    log.Fatal(err)  // Connection error
+//	}
+//
+//	// Get operation with paths (auto-connects if needed)
 //	ctx := context.Background()
 //	paths := []string{"/interfaces/interface[name=GigabitEthernet0/0/0/0]/state"}
 //	res, err := client.Get(ctx, paths)

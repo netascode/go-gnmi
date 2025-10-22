@@ -13,6 +13,7 @@
 ## Features
 
 - **Simple API**: Fluent, chainable API design
+- **Lazy Connection**: Non-blocking client initialization with automatic connection on first use
 - **JSON Manipulation**: Path-based JSON operations using [gjson](https://github.com/tidwall/gjson) and [sjson](https://github.com/tidwall/sjson)
 - **Complete gNMI Support**: Get, Set, and Capabilities operations
 - **Robust Transport**: Built on [gnmic](https://github.com/openconfig/gnmic) for reliable gRPC connectivity and gNMI protocol handling
@@ -76,7 +77,10 @@ func main() {
 
 ### Client Creation
 
+The client uses **lazy connection** - `NewClient()` validates configuration but doesn't establish a physical connection. The connection happens automatically on first use:
+
 ```go
+// Creates client without connecting (validates config only)
 client, err := gnmi.NewClient(
     "device.example.com:57400",
     gnmi.Username("admin"),
@@ -87,6 +91,15 @@ client, err := gnmi.NewClient(
     gnmi.MaxRetries(5),
     gnmi.OperationTimeout(120*time.Second),
 )
+if err != nil {
+    log.Fatal(err)  // Configuration error
+}
+defer client.Close()
+
+// Optional: Verify connection before operations
+if err := client.Ping(ctx); err != nil {
+    log.Fatal(err)  // Connection error
+}
 ```
 
 ### Get Operations

@@ -43,7 +43,7 @@ func main() {
 		gnmi.VerifyCertificate(false), // WARNING: Disables TLS verification - TESTING ONLY
 	)
 	if err != nil {
-		log.Printf("Failed to connect (no logging): %v", err)
+		log.Printf("Client creation failed (no logging): %v", err)
 	} else {
 		fmt.Println("Connected successfully (logs are disabled by default)")
 		client1.Close() //nolint:errcheck // Error intentionally ignored in example
@@ -61,7 +61,7 @@ func main() {
 		gnmi.WithLogger(logger),
 	)
 	if err != nil {
-		log.Printf("Failed to connect (info logging): %v", err)
+		log.Printf("Client creation failed (info logging): %v", err)
 	} else {
 		fmt.Println("Connected - check logs above for connection info")
 		defer client2.Close() //nolint:errcheck // Error intentionally ignored in example
@@ -88,7 +88,7 @@ func main() {
 		gnmi.WithPrettyPrintLogs(false), // Disable pretty printing for performance
 	)
 	if err != nil {
-		log.Printf("Failed to connect (debug logging): %v", err)
+		log.Printf("Client creation failed (debug logging): %v", err)
 	} else {
 		fmt.Println("Connected - check logs above for detailed debug info")
 		defer client3.Close() //nolint:errcheck // Error intentionally ignored in example
@@ -142,7 +142,7 @@ func main() {
 		gnmi.WithLogger(redactionLogger),
 	)
 	if err != nil {
-		log.Printf("Failed to connect (redaction example): %v", err)
+		log.Printf("Client creation failed (redaction example): %v", err)
 	} else {
 		defer client5.Close() //nolint:errcheck // Error intentionally ignored in example
 
@@ -204,7 +204,7 @@ func main() {
 		gnmi.WithLogger(customLogger),
 	)
 	if err != nil {
-		log.Printf("Failed to connect (custom logger): %v", err)
+		log.Printf("Client creation failed (custom logger): %v", err)
 	} else {
 		fmt.Println("Connected with custom logger")
 		defer client6.Close() //nolint:errcheck // Error intentionally ignored in example
@@ -233,7 +233,7 @@ func main() {
 		gnmi.WithLogger(contextAwareLogger),
 	)
 	if err != nil {
-		log.Printf("Failed to connect (context-aware logger): %v", err)
+		log.Printf("Client creation failed (context-aware logger): %v", err)
 	} else {
 		fmt.Println("Connected with context-aware logger")
 		defer client7.Close() //nolint:errcheck // Error intentionally ignored in example

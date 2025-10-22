@@ -63,8 +63,11 @@ var defaultRedactionPatterns = []*regexp.Regexp{
 
 // Client represents a gNMI client connection to a network device
 type Client struct {
-	// gnmic target for gNMI transport
+	// gnmic target for gNMI transport (lazy connection)
 	target *target.Target
+
+	// connected tracks if connection has been established (lazy)
+	connected bool
 
 	// RWMutex to synchronize access to mutable state
 	mu sync.RWMutex
@@ -106,8 +109,10 @@ type Client struct {
 
 // NewClient creates a new gNMI client with the specified target and options
 //
-// The client establishes a connection to the gNMI server and performs capability
-// exchange. Use functional options to configure authentication and behavior.
+// The client creates a gnmic target configuration but does NOT establish
+// a physical connection immediately. The connection is established automatically
+// on the first RPC call (lazy connection). Use Ping() to explicitly verify
+// connectivity if needed.
 //
 // Example:
 //
@@ -120,11 +125,19 @@ type Client struct {
 //	    gnmi.MaxRetries(5),
 //	)
 //	if err != nil {
-//	    log.Fatal(err)
+//	    log.Fatal(err)  // Configuration error
 //	}
 //	defer client.Close()
 //
-// Returns a configured Client or an error if connection fails.
+//	// Optional: verify connection explicitly
+//	if err := client.Ping(ctx); err != nil {
+//	    log.Fatal(err)  // Connection error
+//	}
+//
+//	// Auto-connect on first use
+//	res, err := client.Get(ctx, paths)
+//
+// Returns a configured Client or an error if configuration validation fails.
 func NewClient(target string, opts ...func(*Client)) (*Client, error) {
 	// Create client with default values
 	client := &Client{
@@ -151,20 +164,21 @@ func NewClient(target string, opts ...func(*Client)) (*Client, error) {
 	// Set InsecureSkipVerify alias
 	client.InsecureSkipVerify = !client.VerifyCertificate
 
-	// Validate configuration before connection
+	// Validate configuration
 	if err := client.validateConfig(); err != nil {
 		return nil, err
 	}
 
-	// Create gnmic target and establish connection
-	if err := client.connect(context.Background()); err != nil {
+	// Create gnmic target (configuration only, NO connection yet)
+	if err := client.createTarget(); err != nil {
 		return nil, err
 	}
 
-	// Log successful connection
-	client.logger.Info(context.Background(), "gNMI connection established",
+	// Log client creation (connection happens lazily)
+	client.logger.Info(context.Background(), "gNMI client created",
 		"target", client.Target,
-		"port", client.Port)
+		"port", client.Port,
+		"connection", "lazy")
 
 	return client, nil
 }
@@ -183,9 +197,10 @@ func (c *Client) Close() error {
 		return nil
 	}
 
-	// Clear target reference before closing to prevent double-close
+	// Clear target reference and reset connected flag before closing
 	target := c.target
 	c.target = nil
+	c.connected = false
 
 	err := target.Close()
 	if err != nil {
@@ -623,17 +638,15 @@ func (c *Client) validateConfig() error {
 	return nil
 }
 
-// connect creates a gnmic target and establishes a gNMI connection
+// createTarget creates a gnmic target configuration without establishing connection
 //
-// This method:
-//   - Creates a gnmic target with configured options
-//   - Establishes the gRPC connection
-//   - Performs capability exchange
+// This method builds target options from client configuration and creates
+// a gnmic target handle. The actual gRPC connection is NOT established here.
 //
 // PRECONDITION: Configuration must be validated via validateConfig().
 //
-// Returns an error if connection fails.
-func (c *Client) connect(ctx context.Context) error {
+// Returns an error if target creation fails (configuration errors only).
+func (c *Client) createTarget() error {
 	// Build target address with port
 	address := c.Target
 	if !strings.Contains(address, ":") {
@@ -670,20 +683,57 @@ func (c *Client) connect(ctx context.Context) error {
 	targetOpts = append(targetOpts, api.Insecure(!c.UseTLS))
 	targetOpts = append(targetOpts, api.SkipVerify(c.InsecureSkipVerify))
 
-	// Create target
+	// Create target (configuration only, NO connection)
 	t, err := api.NewTarget(targetOpts...)
 	if err != nil {
 		return fmt.Errorf("failed to create gnmic target: %w", err)
 	}
 
-	// Create gNMI client (establishes connection)
-	err = t.CreateGNMIClient(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create gNMI client: %w", err)
+	// Store target (not connected yet)
+	c.target = t
+
+	return nil
+}
+
+// ensureConnected establishes connection if not already connected (lazy connection)
+//
+// This method checks the connection flag and if not connected, calls
+// CreateGNMIClient() to establish the connection. This implements the lazy
+// connection pattern where physical connections are deferred until first use.
+//
+// Thread-safe: acquires client mutex before checking/establishing connection.
+//
+// Returns an error if connection establishment fails.
+func (c *Client) ensureConnected(ctx context.Context) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Check if target exists
+	if c.target == nil {
+		return fmt.Errorf("client not connected")
 	}
 
-	// Store target
-	c.target = t
+	// Check if already connected
+	if c.connected {
+		return nil // Already connected
+	}
+
+	// Not connected yet - establish connection now
+	c.logger.Debug(ctx, "Establishing gNMI connection",
+		"target", c.Target,
+		"port", c.Port)
+
+	err := c.target.CreateGNMIClient(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to establish connection: %w", err)
+	}
+
+	// Mark as connected
+	c.connected = true
+
+	c.logger.Info(ctx, "gNMI connection established",
+		"target", c.Target,
+		"port", c.Port)
 
 	return nil
 }
@@ -718,15 +768,12 @@ func (c *Client) Capabilities(ctx context.Context) (CapabilitiesRes, error) {
 		}, err
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	// Check target exists
-	if c.target == nil {
+	// Ensure connection is established (lazy connection)
+	if err := c.ensureConnected(ctx); err != nil {
 		return CapabilitiesRes{
 			OK:     false,
-			Errors: []ErrorModel{{Message: "client not connected"}},
-		}, fmt.Errorf("client not connected")
+			Errors: []ErrorModel{{Message: err.Error()}},
+		}, err
 	}
 
 	// Apply operation timeout
@@ -773,6 +820,33 @@ func (c *Client) Capabilities(ctx context.Context) (CapabilitiesRes, error) {
 	}, nil
 }
 
+// Ping verifies connectivity by performing a Capabilities RPC
+//
+// This method establishes a connection if not already connected and performs
+// a gNMI Capabilities request to verify the server is reachable and responsive.
+// This is useful when you want to explicitly verify connectivity before performing
+// other operations.
+//
+// Example:
+//
+//	client, err := gnmi.NewClient("192.168.1.1:57400", opts...)
+//	if err != nil {
+//	    log.Fatal(err)  // Configuration error
+//	}
+//	defer client.Close()
+//
+//	// Verify connection before proceeding
+//	if err := client.Ping(ctx); err != nil {
+//	    log.Fatal(err)  // Connection error
+//	}
+//
+//	// Now confident connection works
+//	res, err := client.Get(ctx, paths)
+func (c *Client) Ping(ctx context.Context) error {
+	_, err := c.Capabilities(ctx)
+	return err
+}
+
 // reconnect attempts to reconnect to the gNMI target after a connection failure.
 //
 // This method closes the existing (broken) connection and establishes a new one.
@@ -789,16 +863,30 @@ func (c *Client) reconnect(ctx context.Context) error {
 	// Close existing connection (ignore errors - connection may already be broken)
 	if c.target != nil {
 		_ = c.target.Close() //nolint:errcheck // Explicitly ignore error (connection likely already broken)
-		c.target = nil
 	}
 
-	// Recreate connection
-	if err := c.connect(ctx); err != nil {
+	// Reset connection flag
+	c.connected = false
+
+	// Recreate target configuration
+	if err := c.createTarget(); err != nil {
+		c.logger.Error(ctx, "gNMI target recreation failed",
+			"target", c.Target,
+			"error", err.Error())
+		return fmt.Errorf("failed to recreate target: %w", err)
+	}
+
+	// Establish new connection
+	err := c.target.CreateGNMIClient(ctx)
+	if err != nil {
 		c.logger.Error(ctx, "gNMI reconnection failed",
 			"target", c.Target,
 			"error", err.Error())
 		return fmt.Errorf("failed to reconnect: %w", err)
 	}
+
+	// Mark as connected
+	c.connected = true
 
 	c.logger.Info(ctx, "gNMI reconnected",
 		"target", c.Target)

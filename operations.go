@@ -358,6 +358,14 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 		}, err
 	}
 
+	// Ensure connection is established (lazy connection)
+	if err := c.ensureConnected(ctx); err != nil {
+		return GetRes{
+			OK:     false,
+			Errors: []ErrorModel{{Message: err.Error()}},
+		}, fmt.Errorf("get: connection failed: %w", err)
+	}
+
 	// Acquire lock after validation
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -597,17 +605,17 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 		}, err
 	}
 
-	// Acquire lock after validation
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	// Check target exists
-	if c.target == nil {
+	// Ensure connection is established (lazy connection)
+	if err := c.ensureConnected(ctx); err != nil {
 		return SetRes{
 			OK:     false,
-			Errors: []ErrorModel{{Message: "client not connected"}},
-		}, fmt.Errorf("set: client not connected")
+			Errors: []ErrorModel{{Message: err.Error()}},
+		}, fmt.Errorf("set: connection failed: %w", err)
 	}
+
+	// Acquire lock after validation and connection
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	// Build request for modifiers
 	req := &Req{}
