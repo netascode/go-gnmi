@@ -5,6 +5,7 @@ package gnmi
 
 import (
 	"bytes"
+	"context"
 	"log"
 	"strings"
 	"testing"
@@ -22,7 +23,7 @@ func TestDefaultLogger_LogLevels(t *testing.T) {
 			name:  "debug level logs debug",
 			level: LogLevelDebug,
 			logFunc: func(l *DefaultLogger) {
-				l.Debug("test message")
+				l.Debug(context.Background(), "test message")
 			},
 			expectMessage: true,
 		},
@@ -30,7 +31,7 @@ func TestDefaultLogger_LogLevels(t *testing.T) {
 			name:  "info level filters debug",
 			level: LogLevelInfo,
 			logFunc: func(l *DefaultLogger) {
-				l.Debug("test message")
+				l.Debug(context.Background(), "test message")
 			},
 			expectMessage: false,
 		},
@@ -38,7 +39,7 @@ func TestDefaultLogger_LogLevels(t *testing.T) {
 			name:  "info level logs info",
 			level: LogLevelInfo,
 			logFunc: func(l *DefaultLogger) {
-				l.Info("test message")
+				l.Info(context.Background(), "test message")
 			},
 			expectMessage: true,
 		},
@@ -46,7 +47,7 @@ func TestDefaultLogger_LogLevels(t *testing.T) {
 			name:  "warn level filters info",
 			level: LogLevelWarn,
 			logFunc: func(l *DefaultLogger) {
-				l.Info("test message")
+				l.Info(context.Background(), "test message")
 			},
 			expectMessage: false,
 		},
@@ -54,7 +55,7 @@ func TestDefaultLogger_LogLevels(t *testing.T) {
 			name:  "error level filters warn",
 			level: LogLevelError,
 			logFunc: func(l *DefaultLogger) {
-				l.Warn("test message")
+				l.Warn(context.Background(), "test message")
 			},
 			expectMessage: false,
 		},
@@ -62,7 +63,7 @@ func TestDefaultLogger_LogLevels(t *testing.T) {
 			name:  "error level logs error",
 			level: LogLevelError,
 			logFunc: func(l *DefaultLogger) {
-				l.Error("test message")
+				l.Error(context.Background(), "test message")
 			},
 			expectMessage: true,
 		},
@@ -70,7 +71,7 @@ func TestDefaultLogger_LogLevels(t *testing.T) {
 			name:  "none level filters all",
 			level: LogLevelNone,
 			logFunc: func(l *DefaultLogger) {
-				l.Error("test message")
+				l.Error(context.Background(), "test message")
 			},
 			expectMessage: false,
 		},
@@ -304,7 +305,7 @@ func TestDefaultLogger_KeyValuePairs(t *testing.T) {
 			t.Cleanup(func() { log.SetOutput(nil) })
 
 			logger := NewDefaultLogger(LogLevelDebug)
-			logger.Debug("test", tt.keysAndValues...)
+			logger.Debug(context.Background(), "test", tt.keysAndValues...)
 
 			output := buf.String()
 
@@ -341,10 +342,10 @@ func TestNoOpLogger(t *testing.T) {
 	logger := &NoOpLogger{}
 
 	// All these should produce no output
-	logger.Debug("test")
-	logger.Info("test")
-	logger.Warn("test")
-	logger.Error("test")
+	logger.Debug(context.Background(), "test")
+	logger.Info(context.Background(), "test")
+	logger.Warn(context.Background(), "test")
+	logger.Error(context.Background(), "test")
 
 	output := buf.String()
 	if output != "" {
@@ -361,10 +362,10 @@ func TestNoOpLogger_WithKeyValues(t *testing.T) {
 	logger := &NoOpLogger{}
 
 	// All these should produce no output, even with key-value pairs
-	logger.Debug("debug message", "key1", "value1", "key2", 123)
-	logger.Info("info message", "operation", "test", "duration", 500)
-	logger.Warn("warn message", "warning", "something")
-	logger.Error("error message", "error", "failed", "code", 500)
+	logger.Debug(context.Background(), "debug message", "key1", "value1", "key2", 123)
+	logger.Info(context.Background(), "info message", "operation", "test", "duration", 500)
+	logger.Warn(context.Background(), "warn message", "warning", "something")
+	logger.Error(context.Background(), "error message", "error", "failed", "code", 500)
 
 	output := buf.String()
 	if output != "" {
@@ -384,10 +385,10 @@ func TestNoOpLogger_NoPanic(t *testing.T) {
 
 	// High-volume test: 1000 calls should complete without panic
 	for i := 0; i < 1000; i++ {
-		logger.Debug("test message", "iteration", i, "key", "value")
-		logger.Info("test message", "iteration", i, "key", "value")
-		logger.Warn("test message", "iteration", i, "key", "value")
-		logger.Error("test message", "iteration", i, "key", "value")
+		logger.Debug(context.Background(), "test message", "iteration", i, "key", "value")
+		logger.Info(context.Background(), "test message", "iteration", i, "key", "value")
+		logger.Warn(context.Background(), "test message", "iteration", i, "key", "value")
+		logger.Error(context.Background(), "test message", "iteration", i, "key", "value")
 	}
 
 	t.Log("NoOpLogger successfully handled 4000 log calls without panic")
@@ -559,21 +560,21 @@ func BenchmarkDefaultLogger(b *testing.B) {
 	b.Run("simple message", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			logger.Info("test message")
+			logger.Info(context.Background(), "test message")
 		}
 	})
 
 	b.Run("with key-values", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			logger.Info("test message", "key1", "value1", "key2", 123)
+			logger.Info(context.Background(), "test message", "key1", "value1", "key2", 123)
 		}
 	})
 
 	b.Run("filtered debug", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			logger.Debug("test message", "key", "value")
+			logger.Debug(context.Background(), "test message", "key", "value")
 		}
 	})
 }

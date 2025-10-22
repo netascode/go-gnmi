@@ -12,16 +12,18 @@ This guide covers logging configuration, log levels, and best practices for obse
 
 ## Logger Interface
 
-go-gnmi uses a simple logger interface:
+go-gnmi uses a context-aware logger interface:
 
 ```go
 type Logger interface {
-    Debug(msg string, keysAndValues ...interface{})
-    Info(msg string, keysAndValues ...interface{})
-    Warn(msg string, keysAndValues ...interface{})
-    Error(msg string, keysAndValues ...interface{})
+    Debug(ctx context.Context, msg string, keysAndValues ...interface{})
+    Info(ctx context.Context, msg string, keysAndValues ...interface{})
+    Warn(ctx context.Context, msg string, keysAndValues ...interface{})
+    Error(ctx context.Context, msg string, keysAndValues ...interface{})
 }
 ```
+
+All methods receive a `context.Context` as the first parameter, enabling integration with context-based logging frameworks and distributed tracing.
 
 ## Default Logger
 
@@ -102,26 +104,29 @@ logger := gnmi.NewDefaultLogger(gnmi.LogLevelWarn)
 ### slog Adapter
 
 ```go
-import "log/slog"
+import (
+    "context"
+    "log/slog"
+)
 
 type SlogAdapter struct {
     logger *slog.Logger
 }
 
-func (s *SlogAdapter) Debug(msg string, keysAndValues ...interface{}) {
-    s.logger.Debug(msg, keysAndValues...)
+func (s *SlogAdapter) Debug(ctx context.Context, msg string, keysAndValues ...interface{}) {
+    s.logger.DebugContext(ctx, msg, keysAndValues...)
 }
 
-func (s *SlogAdapter) Info(msg string, keysAndValues ...interface{}) {
-    s.logger.Info(msg, keysAndValues...)
+func (s *SlogAdapter) Info(ctx context.Context, msg string, keysAndValues ...interface{}) {
+    s.logger.InfoContext(ctx, msg, keysAndValues...)
 }
 
-func (s *SlogAdapter) Warn(msg string, keysAndValues ...interface{}) {
-    s.logger.Warn(msg, keysAndValues...)
+func (s *SlogAdapter) Warn(ctx context.Context, msg string, keysAndValues ...interface{}) {
+    s.logger.WarnContext(ctx, msg, keysAndValues...)
 }
 
-func (s *SlogAdapter) Error(msg string, keysAndValues ...interface{}) {
-    s.logger.Error(msg, keysAndValues...)
+func (s *SlogAdapter) Error(ctx context.Context, msg string, keysAndValues ...interface{}) {
+    s.logger.ErrorContext(ctx, msg, keysAndValues...)
 }
 
 // Usage
@@ -134,25 +139,28 @@ client, err := gnmi.NewClient(
 ### Zap Adapter
 
 ```go
-import "go.uber.org/zap"
+import (
+    "context"
+    "go.uber.org/zap"
+)
 
 type ZapAdapter struct {
     logger *zap.SugaredLogger
 }
 
-func (z *ZapAdapter) Debug(msg string, keysAndValues ...interface{}) {
+func (z *ZapAdapter) Debug(ctx context.Context, msg string, keysAndValues ...interface{}) {
     z.logger.Debugw(msg, keysAndValues...)
 }
 
-func (z *ZapAdapter) Info(msg string, keysAndValues ...interface{}) {
+func (z *ZapAdapter) Info(ctx context.Context, msg string, keysAndValues ...interface{}) {
     z.logger.Infow(msg, keysAndValues...)
 }
 
-func (z *ZapAdapter) Warn(msg string, keysAndValues ...interface{}) {
+func (z *ZapAdapter) Warn(ctx context.Context, msg string, keysAndValues ...interface{}) {
     z.logger.Warnw(msg, keysAndValues...)
 }
 
-func (z *ZapAdapter) Error(msg string, keysAndValues ...interface{}) {
+func (z *ZapAdapter) Error(ctx context.Context, msg string, keysAndValues ...interface{}) {
     z.logger.Errorw(msg, keysAndValues...)
 }
 
@@ -162,6 +170,123 @@ client, err := gnmi.NewClient(
     "device:57400",
     gnmi.WithLogger(&ZapAdapter{logger: zapLogger.Sugar()}),
 )
+```
+
+**Note**: Zap doesn't have built-in context support, so the context is not used in this adapter. For context-aware logging with trace correlation, use slog or other context-aware logging frameworks.
+
+### Context-Aware Logger (Trace Correlation)
+
+Example logger that extracts trace IDs and request IDs from context:
+
+```go
+import (
+    "context"
+    "fmt"
+    "time"
+)
+
+type ContextAwareLogger struct {
+    prefix string
+}
+
+func (l *ContextAwareLogger) Debug(ctx context.Context, msg string, keysAndValues ...interface{}) {
+    l.logWithContext(ctx, "DEBUG", msg, keysAndValues...)
+}
+
+func (l *ContextAwareLogger) Info(ctx context.Context, msg string, keysAndValues ...interface{}) {
+    l.logWithContext(ctx, "INFO", msg, keysAndValues...)
+}
+
+func (l *ContextAwareLogger) Warn(ctx context.Context, msg string, keysAndValues ...interface{}) {
+    l.logWithContext(ctx, "WARN", msg, keysAndValues...)
+}
+
+func (l *ContextAwareLogger) Error(ctx context.Context, msg string, keysAndValues ...interface{}) {
+    l.logWithContext(ctx, "ERROR", msg, keysAndValues...)
+}
+
+func (l *ContextAwareLogger) logWithContext(ctx context.Context, level, msg string, keysAndValues ...interface{}) {
+    // Extract trace correlation data from context
+    type contextKey string
+    var extractedValues []interface{}
+
+    // Extract trace ID if present
+    if traceID := ctx.Value(contextKey("trace_id")); traceID != nil {
+        extractedValues = append(extractedValues, "trace_id", traceID)
+    }
+
+    // Extract request ID if present
+    if requestID := ctx.Value(contextKey("request_id")); requestID != nil {
+        extractedValues = append(extractedValues, "request_id", requestID)
+    }
+
+    // Extract deadline information if present
+    if deadline, ok := ctx.Deadline(); ok {
+        remaining := time.Until(deadline)
+        extractedValues = append(extractedValues, "deadline_remaining", remaining.String())
+    }
+
+    // Combine extracted context values with provided key-values
+    allValues := append(extractedValues, keysAndValues...)
+
+    // Log with all information
+    fmt.Printf("%s [%s] %s", l.prefix, level, msg)
+    for i := 0; i < len(allValues); i += 2 {
+        if i+1 < len(allValues) {
+            fmt.Printf(" %v=%v", allValues[i], allValues[i+1])
+        }
+    }
+    fmt.Println()
+}
+
+// Usage with trace context
+type contextKey string
+ctx := context.WithValue(context.Background(), contextKey("trace_id"), "trace-abc-123")
+ctx = context.WithValue(ctx, contextKey("request_id"), "req-xyz-789")
+
+client, err := gnmi.NewClient(
+    "device:57400",
+    gnmi.WithLogger(&ContextAwareLogger{prefix: "[TRACE]"}),
+)
+
+// Operations will log with trace_id and request_id
+result, err := client.Get(ctx, []string{"/interfaces"})
+// Output: [TRACE] [INFO] Get operation successful trace_id=trace-abc-123 request_id=req-xyz-789 paths=1
+```
+
+## Context Usage Patterns
+
+### When to use context.Background()
+
+Use `context.Background()` for internal utility methods that don't involve user requests:
+
+- Validation and formatting operations
+- Constructor methods (NewClient)
+- Configuration processing
+- Static operations
+
+### When to propagate user context
+
+Propagate the user's context for operations initiated by API calls:
+
+- gNMI operations (Get, Set, Subscribe, Capabilities)
+- Network operations (Connect, retry logic)
+- Request/response processing
+- Any operation that should be traceable
+
+### Example: Distributed Tracing
+
+```go
+// Create context with trace ID
+type contextKey string
+traceIDKey := contextKey("trace_id")
+ctx := context.WithValue(context.Background(), traceIDKey, "trace-abc-123")
+
+// Pass context to operations
+result, err := client.Get(ctx, []string{"/system/config"})
+
+// Custom logger extracts trace ID and includes it in all log messages
+// enabling correlation across services
 ```
 
 ## Security

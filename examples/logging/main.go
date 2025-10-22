@@ -120,10 +120,11 @@ func main() {
 		logger := gnmi.NewDefaultLogger(ll.level)
 
 		// Demonstrate different log levels
-		logger.Debug("This is a debug message", "key", "value")
-		logger.Info("This is an info message", "target", "192.168.1.1:57400")
-		logger.Warn("This is a warning message", "attempt", 1)
-		logger.Error("This is an error message", "error", "something went wrong")
+		ctx := context.Background()
+		logger.Debug(ctx, "This is a debug message", "key", "value")
+		logger.Info(ctx, "This is an info message", "target", "192.168.1.1:57400")
+		logger.Warn(ctx, "This is a warning message", "attempt", 1)
+		logger.Error(ctx, "This is an error message", "error", "something went wrong")
 	}
 
 	// Example 5: Sensitive data redaction
@@ -218,6 +219,56 @@ func main() {
 		}
 	}
 
+	// Example 7: Context-aware logging (trace correlation)
+	fmt.Println("\n=== Example 7: Context-Aware Logging (Trace Correlation) ===")
+	fmt.Println("Demonstrating how to implement context-aware logging for distributed tracing...")
+
+	contextAwareLogger := &ContextAwareLogger{prefix: "[TRACE]"}
+	client7, err := gnmi.NewClient(
+		target,
+		gnmi.Username(username),
+		gnmi.Password(password),
+		gnmi.TLS(true),
+		gnmi.VerifyCertificate(false), // WARNING: Disables TLS verification - TESTING ONLY
+		gnmi.WithLogger(contextAwareLogger),
+	)
+	if err != nil {
+		log.Printf("Failed to connect (context-aware logger): %v", err)
+	} else {
+		fmt.Println("Connected with context-aware logger")
+		defer client7.Close() //nolint:errcheck // Error intentionally ignored in example
+
+		// Create context with trace ID (simulating distributed tracing)
+		type contextKey string
+		traceIDKey := contextKey("trace_id")
+		requestIDKey := contextKey("request_id")
+
+		ctx := context.WithValue(context.Background(), traceIDKey, "trace-abc-123")
+		ctx = context.WithValue(ctx, requestIDKey, "req-xyz-789")
+
+		// Add deadline to demonstrate deadline extraction
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		fmt.Println("\nContext contains:")
+		fmt.Println("  - trace_id: trace-abc-123")
+		fmt.Println("  - request_id: req-xyz-789")
+		fmt.Println("  - deadline: 10 seconds from now")
+
+		fmt.Println("\nPerforming Get operation - notice logs include trace correlation data...")
+		paths := []string{"/system/config/hostname"}
+		_, err := client7.Get(ctx, paths)
+		if err != nil {
+			fmt.Printf("Get failed: %v\n", err)
+		}
+
+		fmt.Println("\nKey takeaways:")
+		fmt.Println("  ✓ Context-aware loggers can extract trace IDs for correlation")
+		fmt.Println("  ✓ Request IDs enable tracking operations across services")
+		fmt.Println("  ✓ Deadline information helps debug timeout issues")
+		fmt.Println("  ✓ Custom metadata can be propagated via context values")
+	}
+
 	fmt.Println("\n=== Examples Complete ===")
 }
 
@@ -234,19 +285,19 @@ type CustomLogger struct {
 	prefix string
 }
 
-func (l *CustomLogger) Debug(msg string, keysAndValues ...interface{}) {
+func (l *CustomLogger) Debug(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	l.log("DEBUG", msg, keysAndValues...)
 }
 
-func (l *CustomLogger) Info(msg string, keysAndValues ...interface{}) {
+func (l *CustomLogger) Info(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	l.log("INFO", msg, keysAndValues...)
 }
 
-func (l *CustomLogger) Warn(msg string, keysAndValues ...interface{}) {
+func (l *CustomLogger) Warn(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	l.log("WARN", msg, keysAndValues...)
 }
 
-func (l *CustomLogger) Error(msg string, keysAndValues ...interface{}) {
+func (l *CustomLogger) Error(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	l.log("ERROR", msg, keysAndValues...)
 }
 
@@ -255,6 +306,74 @@ func (l *CustomLogger) log(level, msg string, keysAndValues ...interface{}) {
 	for i := 0; i < len(keysAndValues); i += 2 {
 		if i+1 < len(keysAndValues) {
 			fmt.Printf(" %v=%v", keysAndValues[i], keysAndValues[i+1])
+		}
+	}
+	fmt.Println()
+}
+
+// ContextAwareLogger demonstrates how to extract trace correlation data from context
+//
+// This logger shows best practices for context-aware logging:
+//   - Extract trace IDs, request IDs, and other correlation data from context
+//   - Check context deadline to log timeout information
+//   - Propagate context to downstream logging frameworks (slog, zap, etc.)
+//
+// SECURITY WARNING: This is a simplified example for demonstration purposes.
+// Production custom loggers should implement:
+//   - Log value sanitization to prevent log injection attacks
+//   - Sensitive field redaction (password, secret, key, token, auth)
+//   - Message size limits to prevent resource exhaustion
+//
+// See DefaultLogger in logger.go for a production-ready reference implementation.
+type ContextAwareLogger struct {
+	prefix string
+}
+
+func (l *ContextAwareLogger) Debug(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	l.logWithContext(ctx, "DEBUG", msg, keysAndValues...)
+}
+
+func (l *ContextAwareLogger) Info(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	l.logWithContext(ctx, "INFO", msg, keysAndValues...)
+}
+
+func (l *ContextAwareLogger) Warn(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	l.logWithContext(ctx, "WARN", msg, keysAndValues...)
+}
+
+func (l *ContextAwareLogger) Error(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	l.logWithContext(ctx, "ERROR", msg, keysAndValues...)
+}
+
+func (l *ContextAwareLogger) logWithContext(ctx context.Context, level, msg string, keysAndValues ...interface{}) {
+	// Extract trace correlation data from context
+	type contextKey string
+	var extractedValues []interface{}
+
+	// Extract trace ID if present
+	if traceID := ctx.Value(contextKey("trace_id")); traceID != nil {
+		extractedValues = append(extractedValues, "trace_id", traceID)
+	}
+
+	// Extract request ID if present
+	if requestID := ctx.Value(contextKey("request_id")); requestID != nil {
+		extractedValues = append(extractedValues, "request_id", requestID)
+	}
+
+	// Extract deadline information if present
+	if deadline, ok := ctx.Deadline(); ok {
+		remaining := time.Until(deadline)
+		extractedValues = append(extractedValues, "deadline_remaining", remaining.String())
+	}
+
+	// Combine extracted context values with provided key-values
+	allValues := append(extractedValues, keysAndValues...)
+
+	// Log with all information
+	fmt.Printf("%s [%s] %s", l.prefix, level, msg)
+	for i := 0; i < len(allValues); i += 2 {
+		if i+1 < len(allValues) {
+			fmt.Printf(" %v=%v", allValues[i], allValues[i+1])
 		}
 	}
 	fmt.Println()

@@ -589,7 +589,7 @@ type mockLogger struct {
 	errorCalls []map[string]any
 }
 
-func (m *mockLogger) Debug(msg string, keysAndValues ...any) {
+func (m *mockLogger) Debug(ctx context.Context, msg string, keysAndValues ...any) {
 	call := map[string]any{"msg": msg}
 	for i := 0; i < len(keysAndValues); i += 2 {
 		if i+1 < len(keysAndValues) {
@@ -599,7 +599,7 @@ func (m *mockLogger) Debug(msg string, keysAndValues ...any) {
 	m.debugCalls = append(m.debugCalls, call)
 }
 
-func (m *mockLogger) Info(msg string, keysAndValues ...any) {
+func (m *mockLogger) Info(ctx context.Context, msg string, keysAndValues ...any) {
 	call := map[string]any{"msg": msg}
 	for i := 0; i < len(keysAndValues); i += 2 {
 		if i+1 < len(keysAndValues) {
@@ -609,7 +609,7 @@ func (m *mockLogger) Info(msg string, keysAndValues ...any) {
 	m.infoCalls = append(m.infoCalls, call)
 }
 
-func (m *mockLogger) Warn(msg string, keysAndValues ...any) {
+func (m *mockLogger) Warn(ctx context.Context, msg string, keysAndValues ...any) {
 	call := map[string]any{"msg": msg}
 	for i := 0; i < len(keysAndValues); i += 2 {
 		if i+1 < len(keysAndValues) {
@@ -619,7 +619,7 @@ func (m *mockLogger) Warn(msg string, keysAndValues ...any) {
 	m.warnCalls = append(m.warnCalls, call)
 }
 
-func (m *mockLogger) Error(msg string, keysAndValues ...any) {
+func (m *mockLogger) Error(ctx context.Context, msg string, keysAndValues ...any) {
 	call := map[string]any{"msg": msg}
 	for i := 0; i < len(keysAndValues); i += 2 {
 		if i+1 < len(keysAndValues) {

@@ -557,15 +557,15 @@ type TestLogger struct {
 	logs []string
 }
 
-func (l *TestLogger) Debug(msg string, keysAndValues ...interface{}) {
+func (l *TestLogger) Debug(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	l.logs = append(l.logs, "DEBUG: "+msg)
 }
 
-func (l *TestLogger) Info(msg string, keysAndValues ...interface{}) {
+func (l *TestLogger) Info(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	l.logs = append(l.logs, "INFO: "+msg)
 }
 
-func (l *TestLogger) Warn(msg string, keysAndValues ...interface{}) {
+func (l *TestLogger) Warn(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	logEntry := "WARN: " + msg
 	for i := 0; i < len(keysAndValues); i += 2 {
 		if i+1 < len(keysAndValues) {
@@ -575,7 +575,7 @@ func (l *TestLogger) Warn(msg string, keysAndValues ...interface{}) {
 	l.logs = append(l.logs, logEntry)
 }
 
-func (l *TestLogger) Error(msg string, keysAndValues ...interface{}) {
+func (l *TestLogger) Error(ctx context.Context, msg string, keysAndValues ...interface{}) {
 	l.logs = append(l.logs, "ERROR: "+msg)
 }
 

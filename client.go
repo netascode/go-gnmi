@@ -162,7 +162,7 @@ func NewClient(target string, opts ...func(*Client)) (*Client, error) {
 	}
 
 	// Log successful connection
-	client.logger.Info("gNMI connection established",
+	client.logger.Info(context.Background(), "gNMI connection established",
 		"target", client.Target,
 		"port", client.Port)
 
@@ -192,7 +192,7 @@ func (c *Client) Close() error {
 		return err
 	}
 
-	c.logger.Info("gNMI connection closed",
+	c.logger.Info(context.Background(), "gNMI connection closed",
 		"target", c.Target)
 
 	return nil
@@ -297,7 +297,7 @@ func (c *Client) Backoff(attempt int) time.Duration {
 			jitterVal = (timestamp%jitterMax + jitterMax) % jitterMax // Ensure positive
 			delay += float64(jitterVal)
 
-			c.logger.Warn("crypto/rand failed, using timestamp-based jitter",
+			c.logger.Warn(context.Background(), "crypto/rand failed, using timestamp-based jitter",
 				"error", err.Error(),
 				"attempt", attempt,
 				"jitter_ms", time.Duration(jitterVal).Milliseconds())
@@ -307,7 +307,7 @@ func (c *Client) Backoff(attempt int) time.Duration {
 	finalDelay := time.Duration(delay)
 
 	// Log backoff calculation at Debug level
-	c.logger.Debug("Backoff calculated",
+	c.logger.Debug(context.Background(), "Backoff calculated",
 		"attempt", attempt,
 		"base_delay_ms", time.Duration(baseDelay).Milliseconds(),
 		"jitter_ms", time.Duration(jitterVal).Milliseconds(),
@@ -345,7 +345,7 @@ func (c *Client) prepareJSONForLogging(jsonStr string) string {
 		strings.Count(jsonStr, `"auth"`)
 
 	if sensitiveCount > MaxSensitiveFields {
-		c.logger.Warn("Too many sensitive fields detected",
+		c.logger.Warn(context.Background(), "Too many sensitive fields detected",
 			"count", sensitiveCount,
 			"max", MaxSensitiveFields)
 		return JSONTooManySensitiveMsg
@@ -361,7 +361,7 @@ func (c *Client) prepareJSONForLogging(jsonStr string) string {
 			return buf.String()
 		} else {
 			// Fallback: if indent fails (e.g., invalid JSON), return redacted as-is
-			c.logger.Debug("JSON pretty-print failed, using raw redacted output",
+			c.logger.Debug(context.Background(), "JSON pretty-print failed, using raw redacted output",
 				"error", err.Error())
 		}
 	}
@@ -427,7 +427,7 @@ func (c *Client) checkTransientError(err error) bool {
 	st, ok := status.FromError(err)
 	if !ok {
 		// Not a gRPC error, treat as non-transient
-		c.logger.Debug("Error is not a gRPC error",
+		c.logger.Debug(context.Background(), "Error is not a gRPC error",
 			"error", err.Error())
 		return false
 	}
@@ -436,14 +436,14 @@ func (c *Client) checkTransientError(err error) bool {
 	code := uint32(st.Code())
 
 	// Log status code for debugging
-	c.logger.Debug("Checking error for transient pattern",
+	c.logger.Debug(context.Background(), "Checking error for transient pattern",
 		"code", code,
 		"message", st.Message())
 
 	// Check if status code matches any transient pattern
 	for _, pattern := range TransientErrors {
 		if pattern.Code == code {
-			c.logger.Debug("Error matches transient pattern",
+			c.logger.Debug(context.Background(), "Error matches transient pattern",
 				"code", code,
 				"pattern", pattern.Code)
 			return true
@@ -451,7 +451,7 @@ func (c *Client) checkTransientError(err error) bool {
 	}
 
 	// Permanent error
-	c.logger.Debug("Error is permanent (not transient)",
+	c.logger.Debug(context.Background(), "Error is permanent (not transient)",
 		"code", code)
 	return false
 }
@@ -488,7 +488,7 @@ func (c *Client) isTransportError(err error) bool {
 	// codes.Unavailable: Connection lost, DNS failure, server down
 	// codes.DeadlineExceeded: Timeout (may indicate network/transport issues)
 	if code == codes.Unavailable || code == codes.DeadlineExceeded {
-		c.logger.Debug("Transport error detected",
+		c.logger.Debug(context.Background(), "Transport error detected",
 			"code", code,
 			"message", st.Message())
 		return true
@@ -568,7 +568,7 @@ func (c *Client) validateConfig() error {
 
 	// Warn on insecure TLS configuration
 	if c.UseTLS && c.InsecureSkipVerify {
-		c.logger.Warn("InsecureSkipVerify enabled - TLS certificate verification disabled",
+		c.logger.Warn(context.Background(), "InsecureSkipVerify enabled - TLS certificate verification disabled",
 			"target", c.Target,
 			"security_risk", "Man-in-the-Middle attacks possible",
 			"recommendation", "Use only in testing environments")
@@ -576,7 +576,7 @@ func (c *Client) validateConfig() error {
 
 	// Warn if TLS is disabled
 	if !c.UseTLS {
-		c.logger.Warn("TLS disabled - connection is not encrypted",
+		c.logger.Warn(context.Background(), "TLS disabled - connection is not encrypted",
 			"target", c.Target,
 			"security_risk", "Credentials and data transmitted in clear text",
 			"recommendation", "Enable TLS for production use")
@@ -586,7 +586,7 @@ func (c *Client) validateConfig() error {
 	if c.tlsCert != "" {
 		if _, err := os.Stat(c.tlsCert); err != nil {
 			// Log full path at Debug level for troubleshooting
-			c.logger.Debug("TLS certificate validation failed",
+			c.logger.Debug(context.Background(), "TLS certificate validation failed",
 				"path", c.tlsCert,
 				"error", err.Error())
 			// Return only filename in error to prevent path disclosure
@@ -596,7 +596,7 @@ func (c *Client) validateConfig() error {
 	}
 	if c.tlsKey != "" {
 		if _, err := os.Stat(c.tlsKey); err != nil {
-			c.logger.Debug("TLS key validation failed",
+			c.logger.Debug(context.Background(), "TLS key validation failed",
 				"path", c.tlsKey,
 				"error", err.Error())
 			filename := filepath.Base(c.tlsKey)
@@ -605,7 +605,7 @@ func (c *Client) validateConfig() error {
 	}
 	if c.tlsCA != "" {
 		if _, err := os.Stat(c.tlsCA); err != nil {
-			c.logger.Debug("TLS CA validation failed",
+			c.logger.Debug(context.Background(), "TLS CA validation failed",
 				"path", c.tlsCA,
 				"error", err.Error())
 			filename := filepath.Base(c.tlsCA)
@@ -615,7 +615,7 @@ func (c *Client) validateConfig() error {
 
 	// Warn if credentials are missing (not an error, but may be required by device)
 	if !c.HasCredentials() {
-		c.logger.Warn("No credentials configured",
+		c.logger.Warn(context.Background(), "No credentials configured",
 			"target", c.Target,
 			"message", "device may reject connection")
 	}
@@ -734,14 +734,14 @@ func (c *Client) Capabilities(ctx context.Context) (CapabilitiesRes, error) {
 	defer cancel()
 
 	// Log operation start
-	c.logger.Debug("gNMI Capabilities request",
+	c.logger.Debug(ctx, "gNMI Capabilities request",
 		"target", c.Target)
 
 	// Execute request using gnmic target API
 	// Note: gnmic target.Capabilities() takes context and optional extensions
 	resp, err := c.target.Capabilities(ctx)
 	if err != nil {
-		c.logger.Error("gNMI Capabilities failed",
+		c.logger.Error(ctx, "gNMI Capabilities failed",
 			"target", c.Target,
 			"error", err.Error())
 		return CapabilitiesRes{
@@ -760,7 +760,7 @@ func (c *Client) Capabilities(ctx context.Context) (CapabilitiesRes, error) {
 	c.capabilities = capList
 
 	// Log success
-	c.logger.Debug("gNMI Capabilities response",
+	c.logger.Debug(ctx, "gNMI Capabilities response",
 		"version", resp.GNMIVersion,
 		"encodings", len(capList),
 		"models", len(resp.SupportedModels))
@@ -782,7 +782,7 @@ func (c *Client) Capabilities(ctx context.Context) (CapabilitiesRes, error) {
 //
 // Returns an error if reconnection fails.
 func (c *Client) reconnect(ctx context.Context) error {
-	c.logger.Warn("gNMI reconnecting",
+	c.logger.Warn(ctx, "gNMI reconnecting",
 		"target", c.Target,
 		"reason", "transport error")
 
@@ -794,13 +794,13 @@ func (c *Client) reconnect(ctx context.Context) error {
 
 	// Recreate connection
 	if err := c.connect(ctx); err != nil {
-		c.logger.Error("gNMI reconnection failed",
+		c.logger.Error(ctx, "gNMI reconnection failed",
 			"target", c.Target,
 			"error", err.Error())
 		return fmt.Errorf("failed to reconnect: %w", err)
 	}
 
-	c.logger.Info("gNMI reconnected",
+	c.logger.Info(ctx, "gNMI reconnected",
 		"target", c.Target)
 
 	return nil

@@ -160,10 +160,10 @@ func BackoffDelayFactor(factor float64) func(*Client) {
 //	    logger *slog.Logger
 //	}
 //
-//	func (s *SlogAdapter) Debug(msg string, keysAndValues ...interface{}) {
-//	    s.logger.Debug(msg, keysAndValues...)
+//	func (s *SlogAdapter) Debug(ctx context.Context, msg string, keysAndValues ...interface{}) {
+//	    s.logger.DebugContext(ctx, msg, keysAndValues...)
 //	}
-//	// ... implement Info, Warn, Error
+//	// ... implement Info, Warn, Error (all with ctx context.Context as first parameter)
 //
 //	client, _ := gnmi.NewClient("192.168.1.1:57400",
 //	    gnmi.WithLogger(&SlogAdapter{logger: slog.Default()}))

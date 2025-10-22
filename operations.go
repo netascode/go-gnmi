@@ -368,7 +368,7 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 	// This accurately reflects the maximum time needed for all retry attempts
 	totalTimeout := c.calculateTotalTimeout()
 
-	c.logger.Debug("applying total timeout budget",
+	c.logger.Debug(ctx, "applying total timeout budget",
 		"totalTimeout", totalTimeout.String(),
 		"operationTimeout", c.OperationTimeout.String(),
 		"maxRetries", c.MaxRetries,
@@ -391,7 +391,7 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 
 	getReq, err := api.NewGetRequest(gnmicOpts...)
 	if err != nil {
-		c.logger.Error("gNMI Get request creation failed",
+		c.logger.Error(ctx, "gNMI Get request creation failed",
 			"target", c.Target,
 			"error", err.Error())
 		return GetRes{
@@ -401,7 +401,7 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 	}
 
 	// Log request
-	c.logger.Debug("gNMI Get request",
+	c.logger.Debug(ctx, "gNMI Get request",
 		"target", c.Target,
 		"paths", len(paths),
 		"encoding", req.Encoding)
@@ -414,7 +414,7 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 	for attempt := 0; attempt <= c.MaxRetries; attempt++ {
 		// Check parent context cancellation before attempt
 		if err := checkContextCancellation(ctx); err != nil {
-			c.logger.Debug("get operation canceled",
+			c.logger.Debug(ctx, "get operation canceled",
 				"operation", "get",
 				"attempt", attempt,
 				"error", err.Error())
@@ -459,7 +459,7 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 					// Reconnection failed, downgrade to read lock and return error
 					c.mu.Unlock()
 					c.mu.RLock()
-					c.logger.Error("gNMI reconnection failed",
+					c.logger.Error(ctx, "gNMI reconnection failed",
 						"operation", "get",
 						"error", reconnectErr.Error())
 					return GetRes{
@@ -474,7 +474,7 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 			}
 
 			backoff := c.Backoff(attempt)
-			c.logger.Warn("transient error, retrying",
+			c.logger.Warn(ctx, "transient error, retrying",
 				"operation", "get",
 				"attempt", attempt+1,
 				"max_retries", c.MaxRetries,
@@ -488,7 +488,7 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 				continue
 			case <-ctx.Done():
 				// Context canceled during backoff
-				c.logger.Debug("get operation canceled during backoff",
+				c.logger.Debug(ctx, "get operation canceled during backoff",
 					"operation", "get",
 					"attempt", attempt+1)
 				return GetRes{
@@ -504,7 +504,7 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 
 	// Check if all retries failed
 	if lastErr != nil {
-		c.logger.Error("gNMI Get failed",
+		c.logger.Error(ctx, "gNMI Get failed",
 			"target", c.Target,
 			"error", lastErr.Error())
 
@@ -517,7 +517,7 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 	}
 
 	// Log response
-	c.logger.Debug("gNMI Get response",
+	c.logger.Debug(ctx, "gNMI Get response",
 		"target", c.Target,
 		"notifications", len(getResp.Notification))
 
@@ -601,7 +601,7 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 	// This accurately reflects the maximum time needed for all retry attempts
 	totalTimeout := c.calculateTotalTimeout()
 
-	c.logger.Debug("applying total timeout budget",
+	c.logger.Debug(ctx, "applying total timeout budget",
 		"totalTimeout", totalTimeout.String(),
 		"operationTimeout", c.OperationTimeout.String(),
 		"maxRetries", c.MaxRetries,
@@ -643,7 +643,7 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 
 	setReq, err := api.NewSetRequest(gnmicOpts...)
 	if err != nil {
-		c.logger.Error("gNMI Set request creation failed",
+		c.logger.Error(ctx, "gNMI Set request creation failed",
 			"target", c.Target,
 			"error", err.Error())
 		return SetRes{
@@ -653,7 +653,7 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 	}
 
 	// Log request with sanitized operation details
-	c.logger.Debug("gNMI Set request",
+	c.logger.Debug(ctx, "gNMI Set request",
 		"target", c.Target,
 		"operations", len(ops))
 
@@ -662,7 +662,7 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 		// Prepare JSON for logging (redacts sensitive data)
 		sanitizedValue := c.prepareJSONForLogging(op.Value)
 
-		c.logger.Debug("gNMI Set operation",
+		c.logger.Debug(ctx, "gNMI Set operation",
 			"index", i,
 			"type", op.OperationType,
 			"path", op.Path,
@@ -678,7 +678,7 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 	for attempt := 0; attempt <= c.MaxRetries; attempt++ {
 		// Check parent context cancellation before attempt
 		if err := checkContextCancellation(ctx); err != nil {
-			c.logger.Debug("set operation canceled",
+			c.logger.Debug(ctx, "set operation canceled",
 				"operation", "set",
 				"attempt", attempt,
 				"error", err.Error())
@@ -717,7 +717,7 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 				// Attempt to reconnect (already holding write lock)
 				if reconnectErr := c.reconnect(ctx); reconnectErr != nil {
 					// Reconnection failed, return error
-					c.logger.Error("gNMI reconnection failed",
+					c.logger.Error(ctx, "gNMI reconnection failed",
 						"operation", "set",
 						"error", reconnectErr.Error())
 					return SetRes{
@@ -729,7 +729,7 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 			}
 
 			backoff := c.Backoff(attempt)
-			c.logger.Warn("transient error, retrying",
+			c.logger.Warn(ctx, "transient error, retrying",
 				"operation", "set",
 				"attempt", attempt+1,
 				"max_retries", c.MaxRetries,
@@ -743,7 +743,7 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 				continue
 			case <-ctx.Done():
 				// Context canceled during backoff
-				c.logger.Debug("set operation canceled during backoff",
+				c.logger.Debug(ctx, "set operation canceled during backoff",
 					"operation", "set",
 					"attempt", attempt+1)
 				return SetRes{
@@ -759,7 +759,7 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 
 	// Check if all retries failed
 	if lastErr != nil {
-		c.logger.Error("gNMI Set failed",
+		c.logger.Error(ctx, "gNMI Set failed",
 			"target", c.Target,
 			"error", lastErr.Error())
 
@@ -772,7 +772,7 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 	}
 
 	// Log response
-	c.logger.Debug("gNMI Set response",
+	c.logger.Debug(ctx, "gNMI Set response",
 		"target", c.Target,
 		"results", len(setResp.Response))
 
@@ -949,16 +949,16 @@ func (c *Client) createAttemptContext(ctx context.Context, req *Req) (context.Co
 	if req.Timeout > 0 {
 		// Warn about extreme timeouts
 		if req.Timeout < time.Second {
-			c.logger.Warn("request timeout is very short (may not complete)",
+			c.logger.Warn(ctx, "request timeout is very short (may not complete)",
 				"timeout", req.Timeout.String(),
 				"target", c.Target)
 		} else if req.Timeout > 5*time.Minute {
-			c.logger.Warn("request timeout is very long (may delay error detection)",
+			c.logger.Warn(ctx, "request timeout is very long (may delay error detection)",
 				"timeout", req.Timeout.String(),
 				"target", c.Target)
 		}
 
-		c.logger.Debug("applying request-specific timeout",
+		c.logger.Debug(ctx, "applying request-specific timeout",
 			"timeout", req.Timeout.String(),
 			"source", "request",
 			"target", c.Target)
@@ -970,7 +970,7 @@ func (c *Client) createAttemptContext(ctx context.Context, req *Req) (context.Co
 	if deadline, hasDeadline := ctx.Deadline(); hasDeadline {
 		// Context already has deadline, respect it
 		remaining := time.Until(deadline)
-		c.logger.Debug("using existing context deadline",
+		c.logger.Debug(ctx, "using existing context deadline",
 			"remaining", remaining.String(),
 			"source", "context",
 			"target", c.Target)
@@ -979,7 +979,7 @@ func (c *Client) createAttemptContext(ctx context.Context, req *Req) (context.Co
 	}
 
 	// Priority 3: Client default timeout (fallback)
-	c.logger.Debug("applying client default timeout",
+	c.logger.Debug(ctx, "applying client default timeout",
 		"timeout", c.OperationTimeout.String(),
 		"source", "client",
 		"target", c.Target)
