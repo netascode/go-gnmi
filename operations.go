@@ -5,6 +5,7 @@ package gnmi
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -526,6 +527,20 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 	c.logger.Debug(ctx, "gNMI Get response",
 		"target", c.Target,
 		"notifications", len(getResp.Notification))
+
+	// Log each notification with redacted JSON values (at Debug level)
+	for i, notif := range getResp.Notification {
+		// Convert notification to JSON and redact sensitive data
+		if notifJSON, err := json.Marshal(notif); err == nil {
+			sanitizedNotif := c.prepareJSONForLogging(string(notifJSON))
+			c.logger.Debug(ctx, "gNMI Get notification",
+				"index", i,
+				"timestamp", notif.Timestamp,
+				"updates", len(notif.Update),
+				"deletes", len(notif.Delete),
+				"notification", sanitizedNotif)
+		}
+	}
 
 	// Parse response
 	timestamp := time.Now().UnixNano()
