@@ -943,10 +943,10 @@ func expiredContext() context.Context {
 	return ctx
 }
 
-// NOTE: Context Cancellation Integration Tests (Phase 6)
+// NOTE: Context Cancellation Integration Tests (Future Enhancement)
 //
 // The tests above validate context cancellation at operation entry points (validation paths).
-// Phase 6 integration tests will extend this coverage to include:
+// Future integration tests could extend this coverage to include:
 //
 // 1. Context cancellation during retry loops:
 //    - Cancel context between retry attempts
@@ -1755,10 +1755,10 @@ func TestRetryLogicErrorExtraction(t *testing.T) {
 	}
 }
 
-// TODO(Phase 6): Full integration tests with mock gnmic target
+// Future Enhancement: Full integration tests with mock gnmic target
 //
-// The following test scenarios should be implemented in Phase 6 when mock gnmic
-// target infrastructure is available:
+// The following test scenarios could be added when mock gnmic target
+// infrastructure becomes available:
 //
 // 1. TestGetRetryTransientError
 //    - Mock target returns Unavailable 2 times, then success
@@ -1796,7 +1796,7 @@ func TestRetryLogicErrorExtraction(t *testing.T) {
 // - Verify backoff timing with tolerance
 // - Test concurrent retry operations (race detector)
 //
-// Blocker: Requires mock gnmic target infrastructure (Phase 6)
+// Note: Requires mock gnmic target infrastructure for full implementation
 
 // =============================================================================
 // Input Validation & Security Tests

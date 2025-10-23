@@ -609,8 +609,6 @@ func (c *Client) isTransportError(err error) bool {
 // (e.g., from gNMI response error details).
 //
 // Returns true if any error matches a transient pattern.
-//
-//nolint:unused // TODO(Phase 4): Will be used for retry logic in Phase 4
 func (c *Client) checkTransientErrorModels(errs []ErrorModel) bool {
 	if len(errs) == 0 {
 		return false

@@ -393,8 +393,8 @@ func (c *Client) Get(ctx context.Context, paths []string, mods ...func(*Req)) (G
 	ctx, parentCancel := context.WithTimeout(ctx, totalTimeout)
 	defer parentCancel()
 
-	// NOTE: gnmic API integration (api.NewGetRequest, target.Get) validated in Phase 6 integration tests.
-	// Phase 3 tests focus on input validation, error handling, and API structure correctness.
+	// NOTE: Full integration tests with mock gnmic target are documented in operations_test.go.
+	// Current tests focus on input validation, error handling, and API structure correctness.
 
 	// Build gnmic GetRequest
 	gnmicOpts := []api.GNMIOption{
@@ -647,8 +647,8 @@ func (c *Client) Set(ctx context.Context, ops []SetOperation, mods ...func(*Req)
 	ctx, parentCancel := context.WithTimeout(ctx, totalTimeout)
 	defer parentCancel()
 
-	// NOTE: gnmic API integration (api.NewSetRequest, target.Set) validated in Phase 6 integration tests.
-	// Phase 3 tests focus on input validation, operation helpers, and error handling correctness.
+	// NOTE: Full integration tests with mock gnmic target are documented in operations_test.go.
+	// Current tests focus on input validation, operation helpers, and error handling correctness.
 
 	// Build gnmic SetRequest based on operation types
 	gnmicOpts := []api.GNMIOption{}

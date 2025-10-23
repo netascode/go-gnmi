@@ -23,11 +23,8 @@ func Password(password string) func(*Client) {
 
 // TLSCert sets the TLS certificate file path for authentication
 //
-// NOTE: Phase 1 implementation only stores the path. Phase 2 will add certificate
-// loading and validation when the connection is established.
-//
-// The certificate will be loaded and validated in Phase 2 when the connection is
-// established. If the certificate file cannot be read, an error will be returned.
+// The certificate will be loaded and validated when the connection is established.
+// If the certificate file cannot be read, an error will be returned during connection.
 func TLSCert(certPath string) func(*Client) {
 	return func(c *Client) {
 		c.tlsCert = certPath
@@ -36,11 +33,8 @@ func TLSCert(certPath string) func(*Client) {
 
 // TLSKey sets the TLS private key file path for authentication
 //
-// NOTE: Phase 1 implementation only stores the path. Phase 2 will add key
-// loading and validation when the connection is established.
-//
-// The key will be loaded and validated in Phase 2 when the connection is
-// established. If the key file cannot be read, an error will be returned.
+// The key will be loaded and validated when the connection is established.
+// If the key file cannot be read, an error will be returned during connection.
 func TLSKey(keyPath string) func(*Client) {
 	return func(c *Client) {
 		c.tlsKey = keyPath
@@ -49,11 +43,8 @@ func TLSKey(keyPath string) func(*Client) {
 
 // TLSCA sets the TLS CA certificate file path for server verification
 //
-// NOTE: Phase 1 implementation only stores the path. Phase 2 will add CA
-// certificate loading and validation when the connection is established.
-//
-// The CA certificate will be loaded and validated in Phase 2 when the connection
-// is established. If the CA file cannot be read, an error will be returned.
+// The CA certificate will be loaded and validated when the connection is established.
+// If the CA file cannot be read, an error will be returned during connection.
 func TLSCA(caPath string) func(*Client) {
 	return func(c *Client) {
 		c.tlsCA = caPath
