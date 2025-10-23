@@ -168,13 +168,13 @@ func WithLogger(logger Logger) func(*Client) {
 
 // WithPrettyPrintLogs enables/disables JSON pretty printing in logs
 //
-// When enabled, JSON content in debug logs is formatted for better
-// readability. When disabled (default), raw JSON is logged without formatting.
+// When enabled (default), JSON content in debug logs is formatted for better
+// readability. When disabled, raw JSON is logged without formatting.
 //
 // This only affects Debug-level log output. Disabling pretty printing
 // can improve performance when high-frequency operations are logged.
 //
-// Default: disabled (false)
+// Default: enabled (true)
 //
 // Example:
 //

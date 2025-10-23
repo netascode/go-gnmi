@@ -40,17 +40,26 @@ client, err := gnmi.NewClient(
 )
 ```
 
-### With Pretty Printing
+### Pretty Printing
 
-Enable JSON pretty printing for better readability:
+JSON pretty printing is **enabled by default** for better readability in debug logs. You can disable it for performance when high-frequency operations are logged:
 
 ```go
+// Pretty printing enabled by default
 client, err := gnmi.NewClient(
     "device:57400",
     gnmi.Username("admin"),
     gnmi.Password("secret"),
     gnmi.WithLogger(logger),
-    gnmi.WithPrettyPrintLogs(true),
+)
+
+// Disable for performance in high-frequency scenarios
+client, err := gnmi.NewClient(
+    "device:57400",
+    gnmi.Username("admin"),
+    gnmi.Password("secret"),
+    gnmi.WithLogger(logger),
+    gnmi.WithPrettyPrintLogs(false),  // Disable for performance
 )
 ```
 
